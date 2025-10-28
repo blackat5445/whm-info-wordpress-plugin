@@ -1,0 +1,469 @@
+/**
+ * WHM Info Admin Styles
+ * 
+ * @package WHM_Info
+ */
+
+/* Override WordPress admin styles */
+.whmin-admin-page #wpbody-content {
+    padding-bottom: 0;
+}
+
+.whmin-admin-page #wpbody-content > .wrap {
+    margin: 0;
+}
+
+/* Remove default WordPress admin spacing */
+.whmin-settings-container {
+    margin: -20px -20px 0 -20px;
+    padding: 30px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: calc(100vh - 32px);
+}
+
+/* Glass morphism effect for cards */
+.whmin-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    min-width: 98% !important;
+}
+
+/* Animated gradient background for primary elements */
+.btn-primary,
+.whmin-custom-tabs .nav-link.active {
+    background-size: 200% 200%;
+    animation: gradientShift 3s ease infinite;
+}
+
+@keyframes gradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* Floating animation for cards */
+.whmin-card {
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+/* Glow effect on focus */
+.form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(7, 91, 99, 0.15),
+                0 0 20px rgba(7, 91, 99, 0.2);
+}
+
+/* Smooth transitions for all interactive elements */
+.btn,
+.form-control,
+.card,
+.nav-link,
+.badge {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover effects for buttons */
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.btn:active {
+    transform: translateY(0);
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Card hover effects */
+.card:hover {
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom scrollbar */
+.whmin-settings-container::-webkit-scrollbar {
+    width: 10px;
+}
+
+.whmin-settings-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.whmin-settings-container::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #075b63, #0a8a96);
+    border-radius: 10px;
+}
+
+.whmin-settings-container::-webkit-scrollbar-thumb:hover {
+    background: #075b63;
+}
+
+/* Token display styling */
+#binoculars_token_display {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+}
+
+/* Icon animations */
+.fas {
+    transition: transform 0.3s ease;
+}
+
+.btn:hover .fas {
+    transform: rotate(15deg) scale(1.1);
+}
+
+/* Status badge animations */
+.badge {
+    position: relative;
+    overflow: hidden;
+}
+
+.badge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255, 255, 255, 0.3), 
+        transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+/* Modal animations */
+.modal.fade .modal-dialog {
+    transition: transform 0.3s ease-out;
+    transform: translate(0, -50px);
+}
+
+.modal.show .modal-dialog {
+    transform: none;
+}
+
+/* Toast notification styling */
+.toast {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    border: none;
+}
+
+/* Loading spinner enhancement */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Tab content fade effect */
+.tab-pane {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Input group styling */
+.input-group-text {
+    background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+    border: none;
+}
+
+/* Success state animations */
+.success-pulse {
+    animation: successPulse 0.5s ease;
+}
+
+@keyframes successPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 20px rgba(40, 167, 69, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    }
+}
+
+/* Error state animations */
+.error-shake {
+    animation: errorShake 0.5s ease;
+}
+
+@keyframes errorShake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+        transform: translateX(-5px);
+    }
+    20%, 40%, 60%, 80% {
+        transform: translateX(5px);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .whmin-settings-container {
+        padding: 15px;
+    }
+    
+    .whmin-header-section {
+        padding: 20px;
+        margin-top: 10px !important;
+    }
+    
+    .whmin-page-title {
+        font-size: 1.5rem;
+    }
+    
+    .whmin-custom-tabs .nav-link {
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .whmin-settings-container {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
+    
+    .whmin-card {
+        background: rgba(30, 30, 30, 0.95);
+        color: #e0e0e0;
+    }
+    
+    .form-control {
+        background: rgba(50, 50, 50, 0.9);
+        border-color: #444;
+        color: #e0e0e0;
+    }
+    
+    .form-control:focus {
+        background: rgba(60, 60, 60, 0.9);
+        border-color: #075b63;
+        color: #e0e0e0;
+    }
+}
+
+/* Print styles */
+@media print {
+    .whmin-settings-container {
+        background: white;
+    }
+    
+    .btn,
+    .nav-tabs {
+        display: none;
+    }
+}
+
+/* Custom styles for WHM Info Plugin */
+.whmin-settings-container {
+    padding: 20px;
+    background: #f8f9fa;
+    min-height: 100vh;
+}
+
+.whmin-header-section {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.05);
+    margin-top: 10px !important;
+}
+
+.whmin-page-title {
+    color: #075b63;
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.whmin-custom-tabs {
+    background: white;
+    padding: 10px;
+    border-radius: 12px;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+}
+
+.whmin-custom-tabs .nav-link {
+    color: #6c757d;
+    font-weight: 500;
+    border-radius: 8px;
+    padding: 12px 24px;
+    margin: 0 5px;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.whmin-custom-tabs .nav-link:hover {
+    background: #f1f3f5;
+    color: #075b63;
+    transform: translateY(-2px);
+}
+
+.whmin-custom-tabs .nav-link.active {
+    background: linear-gradient(135deg, #075b63, #0a8a96);
+    color: white;
+    box-shadow: 0 4px 15px rgba(7, 91, 99, 0.3);
+}
+
+.whmin-card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.whmin-form .form-control {
+    border-radius: 10px;
+    border: 1px solid #dee2e6;
+    transition: all 0.3s ease;
+}
+
+.whmin-form .form-control:focus {
+    border-color: #075b63;
+    box-shadow: 0 0 0 0.2rem rgba(7, 91, 99, 0.15);
+}
+
+.whmin-form .input-group-text {
+    border-radius: 10px 0 0 10px;
+    border: 1px solid #dee2e6;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #075b63, #0a8a96);
+    border: none;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(7, 91, 99, 0.4);
+}
+
+.btn-outline-success {
+    color: #075b63;
+    border-color: #075b63;
+    border-radius: 10px;
+}
+
+.btn-outline-success:hover {
+    background: #075b63;
+    border-color: #075b63;
+}
+
+.info-card {
+    transition: all 0.3s ease;
+}
+
+.info-card:hover {
+    transform: translateX(5px);
+}
+
+.toast {
+    border-radius: 10px;
+}
+
+.toast.bg-success {
+    background: linear-gradient(135deg, #28a745, #20c997) !important;
+}
+
+.toast.bg-danger {
+    background: linear-gradient(135deg, #dc3545, #f86c7a) !important;
+}
+
+/* Loading animation */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Pulse animation for status indicator */
+.whmin-status-indicator .badge {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(7, 91, 99, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(7, 91, 99, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(7, 91, 99, 0);
+    }
+}
+
+h3.card-title.mb-4 {
+    color: #fff;
+}
+
+.card.bg-light.border-0.animate__fadeInRight.animate__delay-2s {
+    color: #676767;
+}
+.info-card.p-3.bg-light.rounded.animate__animated.animate__fadeInRight.animate__delay-2s {
+    color: #838383;
+}
+
+span.badge.bg-success.ms-2 {
+    display: inline !important;
+}

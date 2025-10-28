@@ -31,6 +31,7 @@ class WHMIN {
         // Settings
         require_once WHMIN_PLUGIN_DIR . 'includes/settings/api-settings.php';
         require_once WHMIN_PLUGIN_DIR . 'includes/settings/direct-connected-websites.php';
+        require_once WHMIN_PLUGIN_DIR . 'includes/settings/in-direct-connected-websites.php';
         require_once WHMIN_PLUGIN_DIR . 'includes/settings/sites-settings.php';
 
         // Shortcodes
@@ -71,7 +72,7 @@ class WHMIN {
         // Keep wp-admin lean; only load on our pages.
         $page = $_GET['page'] ?? '';
         $tab = $_GET['tab'] ?? 'api_settings';
-        
+
         if (strpos($page, 'whmin') !== 0 && strpos($hook, 'whmin') === false) {
             return;
         }
@@ -165,6 +166,16 @@ class WHMIN {
                     true
                 );
             }
+
+            if ($tab === 'indirect_connected') {
+                wp_enqueue_script(
+                   'whmin-indirect-connected', 
+                   WHMIN_PLUGIN_URL . 'assets/admin/js/admin-in-direct-connected.js', 
+                   ['jquery', 'sweetalert2', 'whmin-admin'],
+                   $ver, 
+                   true
+               );
+           }
         }
 
         wp_localize_script('whmin-admin', 'WHMIN_Admin', array(

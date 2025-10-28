@@ -21,39 +21,21 @@ $binoculars_metadata = get_option('whmin_binoculars_api_generated', array());
 
 <div class="whmin-settings-container animate__animated animate__fadeIn">
     <div class="container-fluid p-0">
-        <!-- Header Section -->
-        <div class="whmin-header-section mb-4">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <h1 class="whmin-page-title animate__animated animate__fadeInLeft">
-                        <i class="mdi mdi-key-variant text-primary me-3"></i>
-                        <?php _e('API Settings', 'whmin'); ?>
-                    </h1>
-                    <p class="text-muted animate__animated animate__fadeInLeft animate__delay-1s">
-                        <?php _e('Configure WHM API connection and manage Binoculars API tokens', 'whmin'); ?>
-                    </p>
-                </div>
-                <div class="col-md-6 text-end">
-                    <div class="whmin-status-indicator animate__animated animate__fadeInRight">
-                        <span class="badge bg-primary rounded-pill px-3 py-2">
-                            <i class="mdi mdi-power-plug me-2"></i>
-                            <span id="connection-status"><?php _e('Ready to Connect', 'whmin'); ?></span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Tab Navigation -->
-        <ul class="nav nav-pills whmin-custom-tabs mb-4 animate__animated animate__fadeInUp" id="apiSettingsTabs" role="tablist">
+
+        <!-- Tab Navigation for sub-sections -->
+        <ul class="nav nav-pills whmin-custom-tabs mb-4 animate__animated animate__fadeInUp" id="apiSettingsSubTabs"
+            role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="whm-api-tab" data-bs-toggle="pill" data-bs-target="#whm-api" type="button" role="tab" aria-controls="whm-api" aria-selected="true">
+                <button class="nav-link active" id="whm-api-tab" data-bs-toggle="pill" data-bs-target="#whm-api" type="button"
+                        role="tab" aria-controls="whm-api" aria-selected="true">
                     <i class="mdi mdi-server me-2"></i>
                     <?php _e('WHM API', 'whmin'); ?>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="binoculars-api-tab" data-bs-toggle="pill" data-bs-target="#binoculars-api" type="button" role="tab" aria-controls="binoculars-api" aria-selected="false">
+                <button class="nav-link" id="binoculars-api-tab" data-bs-toggle="pill" data-bs-target="#binoculars-api"
+                        type="button" role="tab" aria-controls="binoculars-api" aria-selected="false">
                     <i class="mdi mdi-binoculars me-2"></i>
                     <?php _e('Binoculars API', 'whmin'); ?>
                 </button>

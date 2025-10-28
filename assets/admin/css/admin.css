@@ -467,3 +467,7 @@ h3.card-title.mb-4 {
 span.badge.bg-success.ms-2 {
     display: inline !important;
 }
+
+i.mdi.mdi-shield-check-outline.mdi-3x.text-success.mb-3 {
+    font-size: 26px;
+}

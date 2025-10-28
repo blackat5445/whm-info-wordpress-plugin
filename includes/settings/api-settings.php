@@ -272,22 +272,6 @@ function whmin_validate_api_request($token) {
     return !empty($stored_token) && hash_equals($stored_token, $token);
 }
 
-/**
- * Register REST API endpoints for Binoculars API
- */
-add_action('rest_api_init', function() {
-    register_rest_route('whmin/v1', '/status', array(
-        'methods' => 'GET',
-        'callback' => 'whmin_api_status_callback',
-        'permission_callback' => 'whmin_api_permission_check'
-    ));
-    
-    register_rest_route('whmin/v1', '/server-info', array(
-        'methods' => 'GET',
-        'callback' => 'whmin_api_server_info_callback',
-        'permission_callback' => 'whmin_api_permission_check'
-    ));
-});
 
 /**
  * Permission check for API endpoints
@@ -319,4 +303,64 @@ function whmin_api_server_info_callback($request) {
         'php_version' => phpversion(),
         'timestamp' => current_time('c')
     ), 200);
+}
+
+/**
+ * Register ALL REST API endpoints for Binoculars API
+ */
+add_action('rest_api_init', function() {
+    // Existing route for status
+    register_rest_route('whmin/v1', '/status', array(
+        'methods' => 'GET',
+        'callback' => 'whmin_api_status_callback',
+        'permission_callback' => 'whmin_api_permission_check'
+    ));
+    
+    // Existing route for server info
+    register_rest_route('whmin/v1', '/server-info', array(
+        'methods' => 'GET',
+        'callback' => 'whmin_api_server_info_callback',
+        'permission_callback' => 'whmin_api_permission_check'
+    ));
+
+    // Route for activating a connection
+    register_rest_route('whmin/v1', '/activate-connection', array(
+        'methods' => 'POST',
+        'callback' => 'whmin_api_activate_callback',
+        'permission_callback' => 'whmin_api_permission_check',
+        'args' => [
+            'site_url' => [
+                'required' => true,
+                'validate_callback' => 'esc_url_raw'
+            ]
+        ]
+    ));
+});
+
+
+
+/**
+* 
+* API callback to activate an indirect site's status.
+*/
+function whmin_api_activate_callback($request) {
+$remote_url = trailingslashit($request->get_param('site_url'));
+$sites = get_option('whmin_indirect_sites', []);
+$site_found = false;
+
+foreach ($sites as $key => $site) {
+    // Compare URLs, making sure they both have a trailing slash for consistency
+    if (trailingslashit($site['url']) === $remote_url) {
+        $sites[$key]['status'] = 'activated';
+        $site_found = true;
+        break;
+    }
+}
+
+if ($site_found) {
+    update_option('whmin_indirect_sites', $sites);
+    return new WP_REST_Response(['message' => 'Connection activated successfully.'], 200);
+}
+
+return new WP_REST_Response(['message' => 'Site not found in the in-direct connection list.'], 404);
 }

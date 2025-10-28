@@ -471,3 +471,122 @@ span.badge.bg-success.ms-2 {
 i.mdi.mdi-shield-check-outline.mdi-3x.text-success.mb-3 {
     font-size: 26px;
 }
+
+.card.whmin-card.shadow-lg.border-0.animate__animated.animate__fadeInUp{background-color: #fff !important;}
+
+/*
+ * ===================================================================
+ *  Enhanced Data Table Styles for WHM Info
+ * ===================================================================
+ */
+
+/* Container for the table to apply shadow and rounded corners */
+.whmin-data-table-container {
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.07);
+    overflow: hidden; /* Important for border-radius to apply to the table */
+    border: 1px solid #e9ecef;
+}
+
+/* General table styling */
+.whmin-data-table {
+    border-collapse: separate; /* Allows for spacing if needed */
+    border-spacing: 0;
+}
+
+.whmin-data-table thead {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.whmin-data-table th,
+.whmin-data-table td {
+    padding: 1rem 1.25rem; /* More vertical and horizontal space */
+    vertical-align: middle;
+}
+
+.whmin-data-table th {
+    font-weight: 600;
+    color: #495057;
+    white-space: nowrap;
+}
+
+/* Beautiful striped rows */
+.whmin-data-table tbody tr {
+    transition: background-color 0.2s ease-in-out;
+}
+
+.whmin-data-table tbody tr:nth-of-type(odd) {
+    background-color: rgba(7, 91, 99, 0.02); /* Very light themed color */
+}
+
+.whmin-data-table tbody tr:hover {
+    background-color: rgba(7, 91, 99, 0.06); /* A bit darker on hover */
+    transform: scale(1.01);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    position: relative;
+}
+
+/* Sorting Header Styles */
+.whmin-data-table .sortable-header {
+    cursor: pointer;
+    position: relative;
+    padding-right: 25px; /* More space for the icon */
+}
+
+.whmin-data-table .sortable-header::after {
+    font-family: "Material Design Icons";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.3;
+    content: "\F01D9"; /* mdi-unfold-more-horizontal */
+    font-size: 1.1em;
+    transition: opacity 0.2s ease;
+}
+
+.whmin-data-table .sortable-header.asc::after,
+.whmin-data-table .sortable-header.desc::after {
+    opacity: 1;
+    color: #075b63;
+}
+
+.whmin-data-table .sortable-header.asc::after {
+    content: "\F005D"; /* mdi-arrow-up */
+}
+
+.whmin-data-table .sortable-header.desc::after {
+    content: "\F0045"; /* mdi-arrow-down */
+}
+
+.whmin-data-table .sortable-header:hover::after {
+    opacity: 0.7;
+}
+
+.whmin-data-table .sortable-header.asc,
+.whmin-data-table .sortable-header.desc {
+    color: #075b63;
+}
+
+/* Enhanced Badge Styles */
+.badge.bg-success-light {
+    background-color: #e6f6e9 !important;
+    color: #1a7431 !important;
+}
+
+.badge.bg-danger-light {
+    background-color: #fdeaea !important;
+    color: #c92a2a !important;
+}
+
+.badge.rounded-pill {
+    padding: 0.4em 0.8em;
+    font-weight: 500;
+}
+
+h3.card-title.mb-1 {
+    color: #fff !important;
+}

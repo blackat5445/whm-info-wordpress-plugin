@@ -60,8 +60,9 @@ class WHMIN {
     /**
      * Admin assets
      * - local bootstrap (css + js)
-     * - local font-awesome
+     * - MDI Icons (CDN)
      * - animate.css (CDN)
+     * - Toastr (CDN)
      * - main admin css
      * - main admin js
      */
@@ -74,8 +75,8 @@ class WHMIN {
 
         $ver = defined('WHMIN_VERSION') ? WHMIN_VERSION : '1.0.0';
 
-        // Local vendor + plugin assets
-        wp_register_style(
+        // Styles
+        wp_enqueue_style(
             'whmin-bootstrap',
             WHMIN_PLUGIN_URL . 'assets/vendor/bootstrap/css/bootstrap.min.css',
             array(),
@@ -83,10 +84,10 @@ class WHMIN {
         );
 
         wp_enqueue_style(
-            'whmin-fontawesome',
-            WHMIN_PLUGIN_URL . 'assets/vendor/fontawesome/css/all.min.css',
+            'whmin-mdi-icons',
+            'https://cdn.jsdelivr.net/npm/@mdi/font/css/materialdesignicons.min.css',
             array(),
-            $ver
+            '7.2.96'
         );
 
         wp_enqueue_style(
@@ -97,13 +98,21 @@ class WHMIN {
         );
 
         wp_enqueue_style(
+            'whmin-toastr',
+            'https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css',
+            array(),
+            '2.1.4'
+        );
+
+        wp_enqueue_style(
             'whmin-admin',
             WHMIN_PLUGIN_URL . 'assets/admin/css/admin.css',
-            array('whmin-bootstrap', 'whmin-fontawesome', 'whmin-animate'),
+            array('whmin-bootstrap', 'whmin-mdi-icons', 'whmin-animate'),
             $ver
         );
 
-        wp_register_script(
+        // Scripts
+        wp_enqueue_script(
             'whmin-bootstrap',
             WHMIN_PLUGIN_URL . 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js',
             array('jquery'),
@@ -112,12 +121,38 @@ class WHMIN {
         );
 
         wp_enqueue_script(
+            'whmin-toastr',
+            'https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js',
+            array('jquery'),
+            '2.1.4',
+            true
+        );
+
+        wp_enqueue_script(
             'whmin-admin',
             WHMIN_PLUGIN_URL . 'assets/admin/js/admin.js',
-            array('jquery', 'whmin-bootstrap'),
+            array('jquery', 'whmin-bootstrap', 'whmin-toastr'),
             $ver,
             true
         );
+
+        wp_enqueue_script(
+            'sweetalert2', 
+            'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js', 
+            [], 
+            '11.7.20', 
+            true
+        );
+
+        if ($page === 'whmin-settings') {
+            wp_enqueue_script(
+                'whmin-api-settings', 
+                WHMIN_PLUGIN_URL . 'assets/admin/js/admin-api-settings.js', 
+                ['jquery', 'sweetalert2', 'whmin-admin'], // Depends on the general admin script
+                $ver, 
+                true
+            );
+        }
 
         wp_localize_script('whmin-admin', 'WHMIN_Admin', array(
             'ajaxurl' => admin_url('admin-ajax.php'),

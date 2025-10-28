@@ -35,7 +35,10 @@ class WHMIN {
         require_once WHMIN_PLUGIN_DIR . 'includes/settings/sites-settings.php';
 
         // Shortcodes
-        require_once WHMIN_PLUGIN_DIR . 'includes/shortcodes/dashboard.php';
+        require_once WHMIN_PLUGIN_DIR . 'includes/shortcodes/private/dashboard.php';
+
+        
+        require_once WHMIN_PLUGIN_DIR . 'includes/shortcodes/public/dashboard.php';
 
         // API
         require_once WHMIN_PLUGIN_DIR . 'includes/api/whm-api.php';

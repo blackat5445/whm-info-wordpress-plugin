@@ -590,3 +590,105 @@ i.mdi.mdi-shield-check-outline.mdi-3x.text-success.mb-3 {
 h3.card-title.mb-1 {
     color: #fff !important;
 }
+
+i.mdi.mdi-web-off.mdi-4x.text-muted.mb-3 {
+    font-size: 60px;
+}
+
+/*
+ * ===================================================================
+ *  SweetAlert2 Modal Customizations (Fixed Layout & Padding)
+ * ===================================================================
+ */
+ .mdi.mdi-web-off.mdi-4x.text-muted.mb-3 {
+    font-size: 60px;
+}
+
+/* Main modal container */
+.swal2-popup.whmin-swal-modal {
+    border-radius: 15px;
+    padding: 2.5rem !important;
+    box-sizing: border-box;
+    max-width: 600px; /* Optional: limit modal width for aesthetics */
+    width: 90%; /* Makes it responsive */
+}
+
+/* Stack all elements vertically */
+.swal2-form-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem; /* Spacing between form fields */
+    margin-top: 1rem;
+}
+
+/* Each input block */
+.swal2-grid-item {
+    width: 100%;
+    text-align: left;
+}
+
+.swal2-grid-item.full-width {
+    width: 100%;
+}
+
+/* Label + Input group styling */
+.swal2-input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+}
+
+/* Label styling */
+.swal2-input-group label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+/* Input + select styling */
+.swal2-popup.whmin-swal-modal .swal2-input,
+.swal2-popup.whmin-swal-modal .swal2-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    border: 1px solid #dee2e6;
+    font-size: 1rem;
+    transition: all 0.2s ease-in-out;
+    box-sizing: border-box;
+}
+
+.swal2-popup.whmin-swal-modal .swal2-input:focus,
+.swal2-popup.whmin-swal-modal .swal2-select:focus {
+    border-color: #075b63;
+    box-shadow: 0 0 0 0.2rem rgba(7, 91, 99, 0.15);
+}
+
+/* Buttons */
+.swal2-popup.whmin-swal-modal .swal2-confirm.btn-primary {
+    background: #075b63 !important;
+    border: none;
+    border-radius: 10px;
+    padding: 0.75rem 1.5rem;
+}
+
+.swal2-popup.whmin-swal-modal .swal2-confirm.btn-primary:hover {
+    background: #064c53 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(7, 91, 99, 0.4);
+}
+
+/* Prevent content from clipping */
+div#swal2-html-container {
+    overflow: visible;
+    padding: 0.5rem 0;
+}
+
+div:where(.swal2-container) input:where(.swal2-input), div:where(.swal2-container) input:where(.swal2-file), div:where(.swal2-container) textarea:where(.swal2-textarea), div:where(.swal2-container) select:where(.swal2-select), div:where(.swal2-container) div:where(.swal2-radio), div:where(.swal2-container) label:where(.swal2-checkbox) {
+    margin: 0 !important;
+}
+
+button.swal2-cancel.btn.btn-outline-secondary.ms-2 {
+    padding: 0.65rem 1.5rem;
+}

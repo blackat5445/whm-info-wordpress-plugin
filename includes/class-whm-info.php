@@ -34,6 +34,8 @@ class WHMIN {
         require_once WHMIN_PLUGIN_DIR . 'includes/settings/direct-connected-websites.php';
         require_once WHMIN_PLUGIN_DIR . 'includes/settings/in-direct-connected-websites.php';
         require_once WHMIN_PLUGIN_DIR . 'includes/settings/sites-settings.php';
+        require_once WHMIN_PLUGIN_DIR . 'includes/settings/public-settings.php';
+        
 
         // Shortcodes
         require_once WHMIN_PLUGIN_DIR . 'includes/shortcodes/private/dashboard.php';
@@ -107,9 +109,12 @@ class WHMIN {
 
         // Pass historical data to JavaScript for the graphs
         $history_log = get_option('whmin_status_history_log', []);
-        wp_localize_script('whmin-public-js', 'WHMIN_Public_Data', array(
-            'history' => $history_log
-        ));
+        $public_settings = whmin_get_public_settings(); // Get our new settings
+        
+        wp_localize_script('whmin-public-js', 'WHMIN_Public_Data', [
+            'history' => $history_log,
+            'settings' => $public_settings // Pass settings to the frontend
+        ]);
     }
 
     /**
@@ -229,6 +234,18 @@ class WHMIN {
                    true
                );
            }
+
+           if ($tab === 'public_settings') {
+                    wp_enqueue_script(
+                        'whmin-public-settings', 
+                        WHMIN_PLUGIN_URL . 'assets/admin/js/admin-public-settings.js', 
+                        ['jquery', 'whmin-admin'], // Depends on admin.js for toastr
+                        $ver, 
+                        true
+                );
+            }
+
+           
         }
 
         wp_localize_script('whmin-admin', 'WHMIN_Admin', array(

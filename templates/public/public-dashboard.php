@@ -1,8 +1,20 @@
 <?php
+/**
+ * Final Public Dashboard Template
+ *
+ * This template is fully dynamic and respects all settings configured
+ * in the "Public Page Settings" admin tab.
+ */
 if (!defined('ABSPATH')) exit;
 
 $data = whmin_get_public_dashboard_data();
-$server_status = $data['overall_status']['status'] ?? 'unknown'; 
+$settings = whmin_get_public_settings();
+$server_status = $data['overall_status']['status'] ?? 'unknown';
+
+// Logic for grid layout
+$is_hosted_visible = $settings['enable_hosted_counter'];
+$is_managed_visible = $settings['enable_managed_counter'];
+$grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmin-grid-single';
 ?>
 <div class="whmin-public-status-page">
     <header class="whmin-header">
@@ -14,27 +26,33 @@ $server_status = $data['overall_status']['status'] ?? 'unknown';
     </header>
 
     <main class="whmin-main-content">
-        <!-- Graph Section for Hosted Servers -->
+        <!-- Graph Section for Hosted Servers (Conditionally Rendered) -->
+        <?php if ($settings['enable_server_graph']): ?>
         <div class="whmin-card">
             <div class="whmin-card-header">
-                <h3><?php _e('WHM Server Uptime', 'whmin'); ?></h3>
+                <h3><?php _e('Hosted Servers Uptime', 'whmin'); ?></h3>
                 <p><?php _e('Historical uptime data for websites hosted on our infrastructure.', 'whmin'); ?></p>
             </div>
             <div class="whmin-card-body">
                 <div class="whmin-graph-controls" data-chart-target="serverHistoryChart">
-                    <button class="whmin-range-btn active" data-range="1"><?php _e('1M', 'whmin'); ?></button>
-                    <button class="whmin-range-btn" data-range="3"><?php _e('3M', 'whmin'); ?></button>
-                    <button class="whmin-range-btn" data-range="6"><?php _e('6M', 'whmin'); ?></button>
-                    <button class="whmin-range-btn" data-range="12"><?php _e('1Y', 'whmin'); ?></button>
-                    <button class="whmin-range-btn" data-range="60"><?php _e('5Y', 'whmin'); ?></button>
+                    <?php
+                    $timeframes = ['24h' => '24H', '7d' => '7D', '1m' => '1M', '3m' => '3M', '6m' => '6M', '12m' => '1Y', '60m' => '5Y'];
+                    foreach ($timeframes as $key => $label):
+                        if (in_array($key, $settings['server_graph_timeframes'])): ?>
+                            <button class="whmin-range-btn <?php echo $key === '1m' ? 'active' : ''; ?>" data-range="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></button>
+                        <?php endif;
+                    endforeach;
+                    ?>
                 </div>
                 <div class="whmin-chart-container">
                     <canvas id="serverHistoryChart"></canvas>
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
-        <!-- Graph Section for Managed Servers -->
+        <!-- Graph Section for Managed Servers (Conditionally Rendered) -->
+        <?php if ($settings['enable_managed_graph']): ?>
         <div class="whmin-card">
             <div class="whmin-card-header">
                 <h3><?php _e('Managed Servers Uptime', 'whmin'); ?></h3>
@@ -42,49 +60,66 @@ $server_status = $data['overall_status']['status'] ?? 'unknown';
             </div>
             <div class="whmin-card-body">
                  <div class="whmin-graph-controls" data-chart-target="externalHistoryChart">
-                    <button class="whmin-range-btn active" data-range="1"><?php _e('1M', 'whmin'); ?></button>
-                    <button class="whmin-range-btn" data-range="3"><?php _e('3M', 'whmin'); ?></button>
-                    <button class="whmin-range-btn" data-range="6"><?php _e('6M', 'whmin'); ?></button>
-                    <button class="whmin-range-btn" data-range="12"><?php _e('1Y', 'whmin'); ?></button>
-                    <button class="whmin-range-btn" data-range="60"><?php _e('5Y', 'whmin'); ?></button>
+                    <?php foreach ($timeframes as $key => $label):
+                        if (in_array($key, $settings['managed_graph_timeframes'])): ?>
+                            <button class="whmin-range-btn <?php echo $key === '1m' ? 'active' : ''; ?>" data-range="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></button>
+                        <?php endif;
+                    endforeach;
+                    ?>
                 </div>
                 <div class="whmin-chart-container">
                     <canvas id="externalHistoryChart"></canvas>
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
-        <div class="whmin-grid">
+        <!-- Statistics Section (Conditionally Rendered) -->
+        <?php if ($is_hosted_visible || $is_managed_visible): ?>
+        <div class="<?php echo esc_attr($grid_class); ?>">
+            
+            <?php if ($is_hosted_visible): ?>
             <div class="whmin-card">
                 <div class="whmin-card-header">
                     <h4><?php _e('Hosted on Our Servers', 'whmin'); ?></h4>
                 </div>
                 <div class="whmin-card-body">
-                    <div class="whmin-stat-big"><?php echo esc_html($data['stats']['direct_count']); ?></div>
+                    <div class="whmin-stat-big animated-counter" data-target="<?php echo esc_attr($data['stats']['direct_count']); ?>" style="color: <?php echo esc_attr($settings['counter_color']); ?>;">0</div>
                     <p><?php _e('Websites', 'whmin'); ?></p>
                 </div>
             </div>
+            <?php endif; ?>
+
+            <?php if ($is_managed_visible): ?>
             <div class="whmin-card">
                  <div class="whmin-card-header">
                     <h4><?php _e('Managed on Other Servers', 'whmin'); ?></h4>
                 </div>
                 <div class="whmin-card-body">
-                    <div class="whmin-stat-big"><?php echo esc_html($data['stats']['indirect_count']); ?></div>
-                    <p><?php _e('Websites distributed across various providers:', 'whmin'); ?></p>
-                    <ul class="whmin-host-list">
-                        <?php if (!empty($data['stats']['hosting_groups'])): ?>
-                            <?php foreach($data['stats']['hosting_groups'] as $host => $count): ?>
-                                <li><?php echo esc_html($host); ?> <span>(<?php echo esc_html($count); ?>)</span></li>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <li><?php _e('No providers listed.', 'whmin'); ?></li>
-                        <?php endif; ?>
-                    </ul>
+                    <div class="whmin-stat-big animated-counter" data-target="<?php echo esc_attr($data['stats']['indirect_count']); ?>" style="color: <?php echo esc_attr($settings['counter_color']); ?>;">0</div>
+                    
+                    <?php if ($settings['show_hosting_breakdown']): ?>
+                        <p><?php _e('Websites distributed across various providers:', 'whmin'); ?></p>
+                        <ul class="whmin-host-list">
+                            <?php if (!empty($data['stats']['hosting_groups'])): ?>
+                                <?php foreach($data['stats']['hosting_groups'] as $host => $count): ?>
+                                    <li><?php echo esc_html($host); ?> <span>(<?php echo esc_html($count); ?>)</span></li>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <li><?php _e('No providers listed.', 'whmin'); ?></li>
+                            <?php endif; ?>
+                        </ul>
+                    <?php else: ?>
+                        <p><?php _e('Websites', 'whmin'); ?></p>
+                    <?php endif; ?>
                 </div>
             </div>
+            <?php endif; ?>
         </div>
+        <?php endif; ?>
 
-        <!-- Maintenance News Section -->
+        <!-- Maintenance News Section (Conditionally Rendered) -->
+        <?php if ($settings['enable_maintenance_news']): ?>
         <div class="whmin-card whmin-maintenance-news">
              <div class="whmin-card-header">
                 <h3><?php _e('Maintenance & News', 'whmin'); ?></h3>
@@ -96,5 +131,6 @@ $server_status = $data['overall_status']['status'] ?? 'unknown';
                 </div>
             </div>
         </div>
+        <?php endif; ?>
     </main>
 </div>

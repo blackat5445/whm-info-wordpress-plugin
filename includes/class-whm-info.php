@@ -5,6 +5,7 @@ if (!defined('ABSPATH')) {
 
 class WHMIN {
     private static $instance = null;
+    private $has_public_shortcode = false; 
 
     public static function get_instance() {
         if (is_null(self::$instance)) {
@@ -36,8 +37,8 @@ class WHMIN {
 
         // Shortcodes
         require_once WHMIN_PLUGIN_DIR . 'includes/shortcodes/private/dashboard.php';
-
         
+
         require_once WHMIN_PLUGIN_DIR . 'includes/shortcodes/public/dashboard.php';
 
         // API
@@ -55,11 +56,60 @@ class WHMIN {
         add_action('init', array($this, 'load_textdomain'));
         add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
+        add_action('wp_enqueue_scripts', array($this, 'register_public_assets'), 5);
         add_action('wp_enqueue_scripts', array($this, 'enqueue_public_assets'));
+        add_action('wp', array($this, 'check_for_shortcode'));
     }
 
     public function load_textdomain() {
         load_plugin_textdomain('whmin', false, dirname(WHMIN_PLUGIN_BASENAME) . '/languages');
+    }
+
+    /**
+     * Checks the content of the current post for the shortcode.
+     * This is hooked into 'wp' to run after the main query is parsed.
+     */
+    public function check_for_shortcode() {
+        global $post;
+        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'whmin_public_dashboard')) {
+            $this->has_public_shortcode = true;
+        }
+    }
+
+    /**
+     * Registers public-facing scripts and styles.
+     * Hooked early to ensure they are available for enqueueing later.
+     */
+    public function register_public_assets() {
+        $ver = defined('WHMIN_VERSION') ? WHMIN_VERSION : '1.0.0';
+        
+        // Register all public assets here
+        wp_register_style('whmin-public-css', WHMIN_PLUGIN_URL . 'assets/public/css/public.css', array(), $ver);
+        wp_register_script('chart-js', 'https://cdn.jsdelivr.net/npm/chart.js', array(), '4.4.0', true);
+        wp_register_script('whmin-public-js', WHMIN_PLUGIN_URL . 'assets/public/js/public.js', array('jquery', 'chart-js'), $ver, true);
+        wp_register_style('whmin-mdi-icons', 'https://cdn.jsdelivr.net/npm/@mdi/font/css/materialdesignicons.min.css', array(), '7.2.96');
+    }
+    
+    /**
+     * Enqueues public assets conditionally if the shortcode is found on the page.
+     */
+    public function enqueue_public_assets() {
+        // First, check if we are in the admin area or if the shortcode was not found.
+        if (is_admin() || !$this->has_public_shortcode) {
+            return;
+        }
+
+        wp_enqueue_style('whmin-mdi-icons');
+
+        // The assets are registered, now we enqueue them.
+        wp_enqueue_style('whmin-public-css');
+        wp_enqueue_script('whmin-public-js');
+
+        // Pass historical data to JavaScript for the graphs
+        $history_log = get_option('whmin_status_history_log', []);
+        wp_localize_script('whmin-public-js', 'WHMIN_Public_Data', array(
+            'history' => $history_log
+        ));
     }
 
     /**
@@ -187,30 +237,6 @@ class WHMIN {
         ));
     }
 
-    /**
-     * Public assets
-     * - styles.css
-     * - local bootstrap (CSS)
-     */
-    public function enqueue_public_assets() {
-        if (is_admin()) return;
-
-        $ver = defined('WHMIN_VERSION') ? WHMIN_VERSION : '1.0.0';
-
-        wp_enqueue_style(
-            'whmin-bootstrap',
-            WHMIN_PLUGIN_URL . 'assets/vendor/bootstrap/css/bootstrap.min.css',
-            array(),
-            $ver
-        );
-
-        wp_enqueue_style(
-            'whmin-styles',
-            WHMIN_PLUGIN_URL . 'assets/public/css/styles.css',
-            array('whmin-bootstrap'),
-            $ver
-        );
-    }
 
     /**
      * Admin Menu:

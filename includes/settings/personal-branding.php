@@ -76,3 +76,18 @@ function whmin_add_custom_favicon() {
         }
     }
 }
+
+/**
+ * Helper function to get the URL of the custom favicon.
+ *
+ * @return string The URL of the favicon, or an empty string if not set.
+ */
+function whmin_get_custom_favicon_url() {
+    $settings = get_option('whmin_branding_settings', []);
+    if (!empty($settings['favicon_id'])) {
+        // Use a small, square thumbnail size for the menu icon for performance
+        $favicon_url = wp_get_attachment_image_url($settings['favicon_id'], 'thumbnail');
+        return $favicon_url ? $favicon_url : '';
+    }
+    return '';
+}

@@ -61,6 +61,8 @@ class WHMIN {
         add_action('wp_enqueue_scripts', array($this, 'enqueue_frontend_assets')); // Renamed for clarity
         add_action('wp', array($this, 'check_for_shortcodes')); // Renamed for clarity
         add_action('wp_head', array($this, 'add_custom_favicon'));
+        add_action('admin_head', array($this, 'add_custom_admin_menu_icon_style'));
+
     }
 
     public function load_textdomain() {
@@ -289,6 +291,35 @@ class WHMIN {
     }
 
 
+
+    public function add_custom_admin_menu_icon_style() {
+        $icon_url = whmin_get_custom_favicon_url();
+    
+        // If there's no custom icon, do nothing.
+        if (empty($icon_url)) {
+            return;
+        }
+    
+        // The unique ID for our menu item is 'toplevel_page_whmin-settings'
+        $menu_item_id = '#toplevel_page_whmin-settings';
+        ?>
+        <style>
+            /* Target the specific menu item's icon container */
+            <?php echo $menu_item_id; ?> .wp-menu-image.svg,
+            <?php echo $menu_item_id; ?> .wp-menu-image {
+                background-image: url('<?php echo esc_url($icon_url); ?>') !important;
+                background-size: contain !important; /* Scale the image to fit */
+                background-position: center !important;
+                background-repeat: no-repeat !important;
+            }
+    
+            /* Hide the default Dashicon that's rendered by default */
+            <?php echo $menu_item_id; ?> .wp-menu-image::before {
+                content: '' !important;
+            }
+        </style>
+        <?php
+    }
     /**
      * Admin Menu:
      * - Top: WHM INFO (opens Settings)

@@ -224,3 +224,10 @@ p.whmin-no-data {
 .whmin-overall-status.whmin-status-unknown .mdi::before {
     content: "\F043D"; /* mdi-progress-question */
 }
+
+.whmin-grid-single {
+    display: grid;
+    grid-template-columns: 1fr; /* Single column layout */
+}
+/* This part will be dynamically added by JS now, but good to have a base */
+.whmin-stat-big { color: #075b63; }

@@ -692,3 +692,103 @@ div:where(.swal2-container) input:where(.swal2-input), div:where(.swal2-containe
 button.swal2-cancel.btn.btn-outline-secondary.ms-2 {
     padding: 0.65rem 1.5rem;
 }
+
+/*
+ * ===============================================================
+ *  Admin Settings Form & Control Fixes
+ * ===============================================================
+ */
+
+/* General form layout */
+.whmin-settings-form h6 {
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    color: #495057;
+}
+
+/* Fix for Bootstrap Switch and Checkbox Alignment */
+.whmin-settings-form .form-check {
+    display: flex;
+    align-items: center; /* Vertically align items */
+    padding-left: 0 !important; /* Reset padding for manual control */
+}
+
+.whmin-settings-form .form-check .form-check-input {
+    margin-left: 0;
+    margin-right: 0.75rem; /* Space between switch/check and label */
+    float: none; /* Override default float */
+}
+
+.whmin-settings-form .form-check .form-check-label {
+    padding-top: 2px; /* Minor adjustment to perfectly align text */
+}
+
+/* Specific fix for the main switch labels which are also titles */
+.whmin-settings-form .form-switch .form-check-label {
+    padding-top: 4px;
+}
+
+/* Style for color picker labels */
+.whmin-settings-form .form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+/* Make color input swatch larger */
+.whmin-settings-form input[type="color"] {
+    min-height: 48px;
+}
+
+/* Beautiful Save Button Styling */
+.whmin-save-button-container .button-primary {
+    background: #075b63 !important; /* Main theme color */
+    border-color: #064c53 !important;
+    font-size: 1rem;
+    padding: 0.75rem 2rem;
+    border-radius: 10px;
+    height: auto;
+    line-height: 1.5;
+    box-shadow: 0 4px 15px rgba(7, 91, 99, 0.2);
+    transition: all 0.2s ease-in-out;
+}
+
+.whmin-save-button-container .button-primary:hover {
+    background: #064c53 !important;
+    border-color: #054147 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(7, 91, 99, 0.4);
+}
+
+/* --- FIND AND REMOVE THIS ENTIRE BLOCK --- */
+input[type=checkbox]:checked::before {
+    content: url(data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2020%2020%27%3E%3Cpath%20d%3D%27M14.83%204.89l1.34.94-5.81%208.38H9.02L5.78%209.67l1.34-1.25%202.57%202.4z%27%20fill%3D%27%233582c4%27%2F%3E%3C%2Fsvg%3E);
+    margin: -.1875rem 0 0 -.25rem;
+    height: 1.3125rem;
+    width: 1.3125rem;
+}
+/* --- END OF BLOCK TO REMOVE --- */
+
+/* --- ALSO FIND AND REMOVE THIS BLOCK IF IT EXISTS --- */
+input[type=checkbox]:checked::before, input[type=radio]:checked::before {
+    float: left;
+    display: inline-block;
+    vertical-align: middle;
+    width: 1rem;
+    speak: never;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+/* --- END OF BLOCK TO REMOVE --- */
+
+input[type=checkbox]:checked::before {
+    content: unset !important;
+    margin: unset !important;
+    height: unset !important;
+    width: unset !important;
+}
+
+.form-switch .form-check-input {
+    width: 0 !important;
+}

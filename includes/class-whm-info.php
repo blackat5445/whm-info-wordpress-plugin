@@ -6,6 +6,7 @@ if (!defined('ABSPATH')) {
 class WHMIN {
     private static $instance = null;
     private $has_public_shortcode = false; 
+    private $has_private_shortcode = false; 
 
     public static function get_instance() {
         if (is_null(self::$instance)) {
@@ -39,8 +40,6 @@ class WHMIN {
 
         // Shortcodes
         require_once WHMIN_PLUGIN_DIR . 'includes/shortcodes/private/dashboard.php';
-        
-
         require_once WHMIN_PLUGIN_DIR . 'includes/shortcodes/public/dashboard.php';
 
         // API
@@ -58,11 +57,10 @@ class WHMIN {
         add_action('init', array($this, 'load_textdomain'));
         add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
-        add_action('wp_enqueue_scripts', array($this, 'register_public_assets'), 5);
-        add_action('wp_enqueue_scripts', array($this, 'enqueue_public_assets'));
-        add_action('wp', array($this, 'check_for_shortcode'));
+        add_action('wp_enqueue_scripts', array($this, 'register_assets'), 5); // Renamed for clarity
+        add_action('wp_enqueue_scripts', array($this, 'enqueue_frontend_assets')); // Renamed for clarity
+        add_action('wp', array($this, 'check_for_shortcodes')); // Renamed for clarity
         add_action('wp_head', array($this, 'add_custom_favicon'));
-
     }
 
     public function load_textdomain() {
@@ -73,60 +71,73 @@ class WHMIN {
      * Checks the content of the current post for the shortcode.
      * This is hooked into 'wp' to run after the main query is parsed.
      */
-    public function check_for_shortcode() {
+    public function check_for_shortcodes() {
         global $post;
-        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'whmin_public_dashboard')) {
-            $this->has_public_shortcode = true;
+        if (is_a($post, 'WP_Post')) {
+            if (has_shortcode($post->post_content, 'whmin_public_dashboard')) {
+                $this->has_public_shortcode = true;
+            }
+            if (has_shortcode($post->post_content, 'whmin_private_dashboard')) {
+                $this->has_private_shortcode = true;
+            }
         }
     }
-
     /**
      * Registers public-facing scripts and styles.
      * Hooked early to ensure they are available for enqueueing later.
      */
-    public function register_public_assets() {
+    public function register_assets() {
         $ver = defined('WHMIN_VERSION') ? WHMIN_VERSION : '1.0.0';
         
-        // Register all public assets here
+        // Public assets
         wp_register_style('whmin-public-css', WHMIN_PLUGIN_URL . 'assets/public/css/public.css', array(), $ver);
         wp_register_script('chart-js', 'https://cdn.jsdelivr.net/npm/chart.js', array(), '4.4.0', true);
         wp_register_script('whmin-public-js', WHMIN_PLUGIN_URL . 'assets/public/js/public.js', array('jquery', 'chart-js'), $ver, true);
+        
+        // --- NEW: Private assets ---
+        wp_register_style('whmin-private-css', WHMIN_PLUGIN_URL . 'assets/private/css/private.css', array('whmin-public-css'), $ver); // Depends on public CSS
+        wp_register_script('whmin-private-js', WHMIN_PLUGIN_URL . 'assets/private/js/private.js', array('jquery'), $ver, true);
+
+        // Shared asset
         wp_register_style('whmin-mdi-icons', 'https://cdn.jsdelivr.net/npm/@mdi/font/css/materialdesignicons.min.css', array(), '7.2.96');
     }
 
     public function add_custom_favicon() {
-        // Only run on the frontend and only if the shortcode is present
-        if (is_admin() || !$this->has_public_shortcode) {
+        if (is_admin() || (!$this->has_public_shortcode && !$this->has_private_shortcode)) {
             return;
         }
-        
-        // Call the function we created in the new file
         whmin_add_custom_favicon();
     }
     
     /**
      * Enqueues public assets conditionally if the shortcode is found on the page.
      */
-    public function enqueue_public_assets() {
-        // First, check if we are in the admin area or if the shortcode was not found.
-        if (is_admin() || !$this->has_public_shortcode) {
+    public function enqueue_frontend_assets() {
+        if (is_admin()) {
             return;
         }
 
-        wp_enqueue_style('whmin-mdi-icons');
+        // Check if either shortcode is present
+        if ($this->has_public_shortcode || $this->has_private_shortcode) {
+            // Enqueue assets needed by BOTH dashboards
+            wp_enqueue_style('whmin-mdi-icons');
+            wp_enqueue_style('whmin-public-css'); // Private CSS depends on this, so load it always
+            wp_enqueue_script('whmin-public-js'); // Both use the same graphing logic for now
 
-        // The assets are registered, now we enqueue them.
-        wp_enqueue_style('whmin-public-css');
-        wp_enqueue_script('whmin-public-js');
+            // Pass data (needed by both)
+            $history_log = get_option('whmin_status_history_log', []);
+            $public_settings = whmin_get_public_settings();
+            wp_localize_script('whmin-public-js', 'WHMIN_Public_Data', [
+                'history' => $history_log,
+                'settings' => $public_settings
+            ]);
 
-        // Pass historical data to JavaScript for the graphs
-        $history_log = get_option('whmin_status_history_log', []);
-        $public_settings = whmin_get_public_settings(); // Get our new settings
-        
-        wp_localize_script('whmin-public-js', 'WHMIN_Public_Data', [
-            'history' => $history_log,
-            'settings' => $public_settings // Pass settings to the frontend
-        ]);
+            // --- NEW: Enqueue private assets ONLY if the private shortcode is found ---
+            if ($this->has_private_shortcode) {
+                wp_enqueue_style('whmin-private-css');
+                wp_enqueue_script('whmin-private-js');
+            }
+        }
     }
 
     /**

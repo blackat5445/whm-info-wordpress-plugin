@@ -9,7 +9,14 @@ if (!defined('ABSPATH')) exit;
 
 $data = whmin_get_public_dashboard_data();
 $settings = whmin_get_public_settings();
+$branding = whmin_get_branding_settings();
 $server_status = $data['overall_status']['status'] ?? 'unknown';
+
+// Determine logo URL
+$logo_url = $branding['logo_id']
+    ? wp_get_attachment_image_url($branding['logo_id'], 'full')
+    : plugins_url('assets/img/logo.png', WHMIN_PLUGIN_BASENAME);
+
 
 // Logic for grid layout
 $is_hosted_visible = $settings['enable_hosted_counter'];
@@ -18,7 +25,7 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
 ?>
 <div class="whmin-public-status-page">
     <header class="whmin-header">
-        <img src="<?php echo esc_url(plugins_url('assets/img/logo.png', WHMIN_PLUGIN_BASENAME)); ?>" alt="Logo" class="whmin-logo">
+        <img src="<?php echo esc_url($logo_url); ?>" alt="Logo" class="whmin-logo">
         <div class="whmin-overall-status whmin-status-<?php echo esc_attr($server_status); ?>">
             <i class="mdi"></i>
             <span><?php echo esc_html($data['overall_status']['text']); ?></span>
@@ -133,4 +140,11 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
         </div>
         <?php endif; ?>
     </main>
+
+    <!-- Footer Section -->
+    <?php if (!empty($branding['footer_note'])): ?>
+    <footer class="whmin-footer">
+        <?php echo wp_kses_post($branding['footer_note']); ?>
+    </footer>
+    <?php endif; ?>
 </div>

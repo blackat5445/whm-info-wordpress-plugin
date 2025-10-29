@@ -231,3 +231,22 @@ p.whmin-no-data {
 }
 /* This part will be dynamically added by JS now, but good to have a base */
 .whmin-stat-big { color: #075b63; }
+
+.whmin-footer {
+    text-align: center;
+    padding: 1.5rem;
+    margin-top: 2rem;
+    border-top: 1px solid #dee2e6;
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.whmin-footer p {
+    margin: 0;
+}
+
+.whmin-footer a {
+    color: #075b63;
+    text-decoration: none;
+    font-weight: 500;
+}

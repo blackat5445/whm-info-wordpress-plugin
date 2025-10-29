@@ -35,7 +35,7 @@ class WHMIN {
         require_once WHMIN_PLUGIN_DIR . 'includes/settings/in-direct-connected-websites.php';
         require_once WHMIN_PLUGIN_DIR . 'includes/settings/sites-settings.php';
         require_once WHMIN_PLUGIN_DIR . 'includes/settings/public-settings.php';
-        
+        require_once WHMIN_PLUGIN_DIR . 'includes/settings/personal-branding.php';
 
         // Shortcodes
         require_once WHMIN_PLUGIN_DIR . 'includes/shortcodes/private/dashboard.php';
@@ -61,6 +61,8 @@ class WHMIN {
         add_action('wp_enqueue_scripts', array($this, 'register_public_assets'), 5);
         add_action('wp_enqueue_scripts', array($this, 'enqueue_public_assets'));
         add_action('wp', array($this, 'check_for_shortcode'));
+        add_action('wp_head', array($this, 'add_custom_favicon'));
+
     }
 
     public function load_textdomain() {
@@ -90,6 +92,16 @@ class WHMIN {
         wp_register_script('chart-js', 'https://cdn.jsdelivr.net/npm/chart.js', array(), '4.4.0', true);
         wp_register_script('whmin-public-js', WHMIN_PLUGIN_URL . 'assets/public/js/public.js', array('jquery', 'chart-js'), $ver, true);
         wp_register_style('whmin-mdi-icons', 'https://cdn.jsdelivr.net/npm/@mdi/font/css/materialdesignicons.min.css', array(), '7.2.96');
+    }
+
+    public function add_custom_favicon() {
+        // Only run on the frontend and only if the shortcode is present
+        if (is_admin() || !$this->has_public_shortcode) {
+            return;
+        }
+        
+        // Call the function we created in the new file
+        whmin_add_custom_favicon();
     }
     
     /**
@@ -243,6 +255,17 @@ class WHMIN {
                         $ver, 
                         true
                 );
+            }
+
+            if ($tab === 'branding') {
+                wp_enqueue_media();
+                wp_enqueue_script(
+                   'whmin-branding-settings', 
+                   WHMIN_PLUGIN_URL . 'assets/admin/js/admin-branding.js', 
+                   ['jquery'],
+                   $ver, 
+                   true
+               );
             }
 
            

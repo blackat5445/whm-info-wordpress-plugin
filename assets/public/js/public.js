@@ -1,18 +1,20 @@
 (function($) {
     'use strict';
 
-    let serverChart, externalChart; // Store chart instances
+    let serverChart, externalChart;
 
     /**
-     * The main function to render or update a chart with different time ranges and custom colors.
+     * Render chart with ACTUAL status data from the 15-min checker
      */
     function renderChart(canvasId, historyData, timeRange, settings) {
         const ctx = document.getElementById(canvasId);
         if (!ctx) return null;
 
+        // historyData = { 'username1': [{status: 'operational', timestamp: 123456}, ...], 'username2': [...] }
         const allSiteHistories = Object.values(historyData);
+        
         if (allSiteHistories.length === 0) {
-            ctx.parentElement.innerHTML = '<p class="whmin-no-data">No monitoring data available for this category.</p>';
+            ctx.parentElement.innerHTML = '<p class="whmin-no-data">No monitoring data available yet. First check runs within 15 minutes.</p>';
             return null;
         }
 
@@ -20,6 +22,7 @@
         const startDate = new Date();
         let groupBy = 'day';
 
+        // Determine time range
         if (timeRange.endsWith('h')) {
             const hours = parseInt(timeRange.replace('h', ''), 10);
             startDate.setHours(endDate.getHours() - hours);
@@ -27,45 +30,75 @@
         } else if (timeRange.endsWith('d')) {
             const days = parseInt(timeRange.replace('d', ''), 10);
             startDate.setDate(endDate.getDate() - days);
-            groupBy = 'hour';
+            groupBy = (days <= 7) ? 'hour' : 'day';
         } else if (timeRange.endsWith('m')) {
             const months = parseInt(timeRange.replace('m', ''), 10);
             startDate.setMonth(endDate.getMonth() - months);
             groupBy = 'day';
         }
 
+        // Create time slots
         const timeSlots = {};
         const labels = [];
+        const startTimestamp = Math.floor(startDate.getTime() / 1000);
+        const endTimestamp = Math.floor(endDate.getTime() / 1000);
 
-        for (let d = new Date(startDate); d <= endDate; d.setHours(d.getHours() + (groupBy === 'hour' ? 1 : 24))) {
-            const key = (groupBy === 'hour') ? `${d.toISOString().split('T')[0]} ${String(d.getHours()).padStart(2, '0')}:00` : d.toISOString().split('T')[0];
-            labels.push(key);
-            timeSlots[key] = { operational: 0, total: 0 };
+        if (groupBy === 'hour') {
+            for (let d = new Date(startDate); d <= endDate; d.setHours(d.getHours() + 1)) {
+                const key = `${d.toISOString().split('T')[0]} ${String(d.getHours()).padStart(2, '0')}:00`;
+                labels.push(key);
+                timeSlots[key] = { operational: 0, total: 0 };
+            }
+        } else {
+            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                const key = d.toISOString().split('T')[0];
+                labels.push(key);
+                timeSlots[key] = { operational: 0, total: 0 };
+            }
         }
 
+        // Process status history from the checker
         allSiteHistories.forEach(siteHistory => {
+            if (!Array.isArray(siteHistory)) return;
+            
             siteHistory.forEach(entry => {
-                const entryDate = new Date(entry.timestamp * 1000);
-                if (entryDate >= startDate && entryDate <= endDate) {
-                    const key = (groupBy === 'hour') ? `${entryDate.toISOString().split('T')[0]} ${String(entryDate.getHours()).padStart(2, '0')}:00` : entryDate.toISOString().split('T')[0];
-                    if (timeSlots[key]) {
-                        if (entry.status === 'operational') timeSlots[key].operational++;
-                        timeSlots[key].total++;
+                const entryTimestamp = entry.timestamp;
+                
+                if (entryTimestamp < startTimestamp || entryTimestamp > endTimestamp) {
+                    return;
+                }
+                
+                const entryDate = new Date(entryTimestamp * 1000);
+                let key;
+                
+                if (groupBy === 'hour') {
+                    key = `${entryDate.toISOString().split('T')[0]} ${String(entryDate.getHours()).padStart(2, '0')}:00`;
+                } else {
+                    key = entryDate.toISOString().split('T')[0];
+                }
+                
+                if (timeSlots[key]) {
+                    timeSlots[key].total++;
+                    if (entry.status === 'operational') {
+                        timeSlots[key].operational++;
                     }
                 }
             });
         });
 
+        // Calculate uptime percentages
         const dataPoints = labels.map(key => {
             const slotData = timeSlots[key];
             const percentage = slotData.total > 0 ? (slotData.operational / slotData.total) * 100 : 100;
             return { x: key, y: percentage };
         });
 
+        // Destroy old chart
         if (canvasId === 'serverHistoryChart' && serverChart) serverChart.destroy();
         if (canvasId === 'externalHistoryChart' && externalChart) externalChart.destroy();
 
-        return new Chart(ctx, {
+        // Create new chart
+        const newChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
@@ -80,16 +113,46 @@
                 }]
             },
             options: {
-                scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } }, x: { display: false } },
-                plugins: { legend: { display: false }, tooltip: { callbacks: { title: (items) => items[0].label, label: (c) => `Uptime: ${c.raw.y.toFixed(2)}%` } } },
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        max: 100, 
+                        ticks: { 
+                            callback: v => v + '%',
+                            font: { size: 11 }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    }, 
+                    x: { 
+                        display: false 
+                    } 
+                },
+                plugins: { 
+                    legend: { display: false }, 
+                    tooltip: { 
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: { size: 13, weight: 'bold' },
+                        bodyFont: { size: 12 },
+                        cornerRadius: 6,
+                        callbacks: { 
+                            title: (items) => items[0].label, 
+                            label: (c) => `Uptime: ${c.raw.y.toFixed(2)}%` 
+                        } 
+                    } 
+                },
                 responsive: true,
                 maintainAspectRatio: false,
             }
         });
+
+        return newChart;
     }
 
     /**
-     * Animates numbers from 0 to a target value.
+     * Animate counters
      */
     function animateCounters() {
         const observer = new IntersectionObserver((entries) => {
@@ -121,14 +184,13 @@
     }
 
     /**
-     * Applies custom colors from settings to the UI.
+     * Apply custom button colors
      */
     function applyCustomStyles(settings) {
         let css = '';
-        // Server graph button styles
         css += `
             [data-chart-target="serverHistoryChart"] .whmin-range-btn {
-                background-color: ${settings.server_graph_button_bg}33; /* Add opacity */
+                background-color: ${settings.server_graph_button_bg}33;
                 color: ${settings.server_graph_button_bg};
             }
             [data-chart-target="serverHistoryChart"] .whmin-range-btn.active,
@@ -136,11 +198,8 @@
                 background-color: ${settings.server_graph_button_bg};
                 color: ${settings.server_graph_button_text};
             }
-        `;
-        // Managed graph button styles
-        css += `
             [data-chart-target="externalHistoryChart"] .whmin-range-btn {
-                background-color: ${settings.managed_graph_button_bg}33; /* Add opacity */
+                background-color: ${settings.managed_graph_button_bg}33;
                 color: ${settings.managed_graph_button_bg};
             }
             [data-chart-target="externalHistoryChart"] .whmin-range-btn.active,
@@ -155,25 +214,30 @@
         document.head.appendChild(styleSheet);
     }
 
-
     $(document).ready(function() {
-        if (typeof WHMIN_Public_Data === 'undefined') return;
+        if (typeof WHMIN_Public_Data === 'undefined') {
+            console.warn('WHMIN_Public_Data not loaded');
+            return;
+        }
 
         const { history, settings } = WHMIN_Public_Data;
         
+        console.log('Status History Data:', history); // Debug
+        
         applyCustomStyles(settings);
         
-        // Initial render of charts
+        // Render charts with REAL status data
         if (settings.enable_server_graph) {
             const serverSettings = { bar_color: settings.server_graph_bar_color };
             serverChart = renderChart('serverHistoryChart', history.direct || {}, '1m', serverSettings);
         }
+        
         if (settings.enable_managed_graph) {
             const managedSettings = { bar_color: settings.managed_graph_bar_color };
             externalChart = renderChart('externalHistoryChart', history.indirect || {}, '1m', managedSettings);
         }
         
-        // Handle clicks on the time range buttons
+        // Handle time range button clicks
         $('.whmin-graph-controls').on('click', '.whmin-range-btn', function() {
             const $this = $(this);
             const range = $this.data('range');

@@ -1,8 +1,7 @@
 <?php
 /**
  * Functions for the In-direct Connected Websites settings tab.
- *
- * @package WHM_Info/Includes/Settings
+ * ADDED: Include/Exclude from monitoring functionality
  */
 
 if (!defined('ABSPATH')) {
@@ -11,16 +10,18 @@ if (!defined('ABSPATH')) {
 
 /**
  * Retrieves the list of indirect sites from the database.
- *
- * @return array An array of site data.
+ * NOW INCLUDES: monitoring_enabled flag
  */
 function whmin_get_indirect_sites_data() {
     $sites = get_option('whmin_indirect_sites', []);
-    // Ensure keys are reset if items are deleted, and add a numeric ID
     $sites_data = [];
     $id_counter = 1;
     foreach ($sites as $site) {
         $site['id'] = $id_counter++;
+        // Ensure monitoring_enabled exists (default: true)
+        if (!isset($site['monitoring_enabled'])) {
+            $site['monitoring_enabled'] = true;
+        }
         $sites_data[] = $site;
     }
     return $sites_data;
@@ -28,8 +29,6 @@ function whmin_get_indirect_sites_data() {
 
 /**
  * Returns a predefined list of hosting providers.
- *
- * @return array
  */
 function whmin_get_hosting_providers() {
     return [
@@ -71,7 +70,6 @@ function whmin_ajax_save_indirect_site() {
         wp_send_json_error(['message' => __('Website Name and URL are required.', 'whmin')], 400);
     }
 
-    // --- LOGIC CHANGE: Determine status based on connection type ---
     $connection_type = sanitize_text_field($site_data['connection']);
     $status = ($connection_type === 'Without API') ? 'activated_manual' : 'not_activated';
 
@@ -81,13 +79,13 @@ function whmin_ajax_save_indirect_site() {
         'url'         => esc_url_raw($site_data['url']),
         'connection'  => $connection_type,
         'hosting'     => sanitize_text_field($site_data['hosting']),
-        'status'      => isset($site_data['status']) ? sanitize_text_field($site_data['status']) : $status, // Use new status logic
+        'status'      => isset($site_data['status']) ? sanitize_text_field($site_data['status']) : $status,
+        'monitoring_enabled' => isset($site_data['monitoring_enabled']) ? (bool)$site_data['monitoring_enabled'] : true,
     ];
 
     $sites = get_option('whmin_indirect_sites', []);
     $is_update = false;
 
-    // ... (rest of the function is the same)
     foreach ($sites as $key => $site) {
         if (isset($site['uid']) && $site['uid'] === $sanitized_data['uid']) {
             $sites[$key] = $sanitized_data;
@@ -108,6 +106,50 @@ function whmin_ajax_save_indirect_site() {
 add_action('wp_ajax_whmin_save_indirect_site', 'whmin_ajax_save_indirect_site');
 
 /**
+ * NEW: AJAX handler to toggle monitoring for an indirect site
+ */
+function whmin_ajax_toggle_indirect_monitoring() {
+    check_ajax_referer('whmin_admin_nonce', 'nonce');
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => __('Permission denied.', 'whmin')], 403);
+    }
+
+    $uid = isset($_POST['uid']) ? sanitize_text_field($_POST['uid']) : '';
+    $enabled = isset($_POST['enabled']) ? (bool)$_POST['enabled'] : true;
+
+    if (empty($uid)) {
+        wp_send_json_error(['message' => __('Invalid Site ID.', 'whmin')], 400);
+    }
+
+    $sites = get_option('whmin_indirect_sites', []);
+    $found = false;
+
+    foreach ($sites as $key => $site) {
+        if (isset($site['uid']) && $site['uid'] === $uid) {
+            $sites[$key]['monitoring_enabled'] = $enabled;
+            $found = true;
+            break;
+        }
+    }
+    
+    if (!$found) {
+        wp_send_json_error(['message' => __('Site not found.', 'whmin')], 404);
+    }
+
+    update_option('whmin_indirect_sites', $sites);
+
+    $message = $enabled 
+        ? __('Monitoring enabled successfully.', 'whmin')
+        : __('Monitoring disabled successfully.', 'whmin');
+
+    wp_send_json_success([
+        'message' => $message,
+        'enabled' => $enabled
+    ]);
+}
+add_action('wp_ajax_whmin_toggle_indirect_monitoring', 'whmin_ajax_toggle_indirect_monitoring');
+
+/**
  * AJAX handler to delete an indirect website.
  */
 function whmin_ajax_delete_indirect_site() {
@@ -124,7 +166,6 @@ function whmin_ajax_delete_indirect_site() {
     $sites = get_option('whmin_indirect_sites', []);
     $updated_sites = [];
 
-    // Rebuild the array, excluding the one to be deleted
     foreach ($sites as $site) {
         if (!isset($site['uid']) || $site['uid'] !== $uid) {
             $updated_sites[] = $site;

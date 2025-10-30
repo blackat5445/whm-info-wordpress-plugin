@@ -36,6 +36,8 @@ class WHMIN {
         require_once WHMIN_PLUGIN_DIR . 'includes/settings/in-direct-connected-websites.php';
         require_once WHMIN_PLUGIN_DIR . 'includes/settings/sites-settings.php';
         require_once WHMIN_PLUGIN_DIR . 'includes/settings/public-settings.php';
+        require_once WHMIN_PLUGIN_DIR . 'includes/settings/private-settings.php';
+        require_once WHMIN_PLUGIN_DIR . 'includes/settings/notification-settings.php';
         require_once WHMIN_PLUGIN_DIR . 'includes/settings/personal-branding.php';
 
         // Shortcodes
@@ -47,6 +49,7 @@ class WHMIN {
 
         // Functions
         require_once WHMIN_PLUGIN_DIR . 'includes/functions/server-status.php';
+        require_once WHMIN_PLUGIN_DIR . 'includes/functions/private-sites-status.php';
         require_once WHMIN_PLUGIN_DIR . 'includes/functions/sites-status.php';
 
         // Utilities
@@ -270,12 +273,32 @@ class WHMIN {
                 );
             }
 
+            if ($tab === 'private_settings') {
+                    wp_enqueue_script(
+                        'whmin-private-settings', 
+                        WHMIN_PLUGIN_URL . 'assets/admin/js/admin-private-settings.js', 
+                        ['jquery', 'whmin-admin'], // Depends on admin.js for toastr
+                        $ver, 
+                        true
+                );
+            }
+
             if ($tab === 'branding') {
                 wp_enqueue_media();
                 wp_enqueue_script(
                    'whmin-branding-settings', 
                    WHMIN_PLUGIN_URL . 'assets/admin/js/admin-branding.js', 
                    ['jquery'],
+                   $ver, 
+                   true
+               );
+            }
+
+            if ($tab === 'notifications') {
+                wp_enqueue_script(
+                   'whmin-notification-settings', 
+                   WHMIN_PLUGIN_URL . 'assets/admin/js/admin-notification-settings.js', 
+                   ['jquery', 'sweetalert2', 'whmin-admin'],
                    $ver, 
                    true
                );

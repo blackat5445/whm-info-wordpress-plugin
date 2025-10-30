@@ -1,8 +1,7 @@
 <?php
 /**
  * Functions for the Direct Connected Websites settings tab.
- *
- * @package WHM_Info/Includes/Settings
+ * ADDED: Include/Exclude from monitoring functionality
  */
 
 if (!defined('ABSPATH')) {
@@ -11,38 +10,43 @@ if (!defined('ABSPATH')) {
 
 /**
  * Retrieves and prepares the list of directly connected websites.
- * It merges data from the WHM API with custom names stored in WordPress.
- *
- * @return array|WP_Error An array of site data or a WP_Error on failure.
+ * NOW INCLUDES: monitoring_enabled flag
  */
 function whmin_get_direct_connected_sites_data() {
     // Fetch the list of accounts from the WHM API
     $accounts_response = whmin_get_whm_accounts();
 
-    // Handle API errors or no accounts found
     if (is_wp_error($accounts_response)) {
-        return $accounts_response; // Pass the error along
+        return $accounts_response;
     }
     
     if (empty($accounts_response)) {
-        return []; // Return an empty array if no accounts exist
+        return [];
     }
 
-    // Get custom names saved in WordPress
+    // Get custom names and monitoring settings
     $custom_names = get_option('whmin_custom_site_names', []);
+    $monitoring_settings = get_option('whmin_direct_monitoring_settings', []);
     $sites_data = [];
     $id_counter = 1;
 
     foreach ($accounts_response as $account) {
+        $user_key = $account['user'];
+        
         // Determine the display name
-        $display_name = !empty($custom_names[$account['user']]) 
-            ? $custom_names[$account['user']] 
-            : $account['user'];
+        $display_name = !empty($custom_names[$user_key]) 
+            ? $custom_names[$user_key] 
+            : $user_key;
 
-        // --- START: CORRECTED DISK USAGE LOGIC ---
+        // Check if monitoring is enabled (default: true)
+        $monitoring_enabled = isset($monitoring_settings[$user_key]) 
+            ? (bool)$monitoring_settings[$user_key] 
+            : true;
+
+        // Disk usage handling
         $disk_used_raw = $account['diskused'];
         $disk_usage_formatted = '';
-        $disk_used_bytes = 0; // Raw value for sorting
+        $disk_used_bytes = 0;
 
         if (strpos($disk_used_raw, '/') !== false) {
             $parts = explode('/', $disk_used_raw);
@@ -55,17 +59,18 @@ function whmin_get_direct_connected_sites_data() {
             $disk_used_bytes = (float)$disk_used_mb * 1024 * 1024;
             $disk_usage_formatted = whmin_format_bytes($disk_used_bytes);
         } else {
-            // FIX: Handle non-numeric values like 'unlimited' gracefully for display and sorting.
             $disk_usage_formatted = esc_html(ucfirst($disk_used_mb));
-            // By setting bytes to a very large number, "unlimited" will correctly sort as the largest.
-            $disk_used_bytes = PHP_INT_MAX; 
+            $disk_used_bytes = PHP_INT_MAX;
         }
-        // --- END: CORRECTED DISK USAGE LOGIC ---
 
         // Determine status
-        $status = $account['suspended'] == 1 
-            ? ['text' => __('Suspended', 'whmin'), 'class' => 'danger']
-            : ['text' => __('Active', 'whmin'), 'class' => 'success'];
+        if (!$monitoring_enabled) {
+            $status = ['text' => __('Monitoring Disabled', 'whmin'), 'class' => 'secondary'];
+        } elseif ($account['suspended'] == 1) {
+            $status = ['text' => __('Suspended', 'whmin'), 'class' => 'danger'];
+        } else {
+            $status = ['text' => __('Active', 'whmin'), 'class' => 'success'];
+        }
             
         $sites_data[] = [
             'id'               => $id_counter++,
@@ -77,6 +82,7 @@ function whmin_get_direct_connected_sites_data() {
             'disk_used'        => $disk_usage_formatted,
             'disk_used_bytes'  => $disk_used_bytes,
             'status'           => $status,
+            'monitoring_enabled' => $monitoring_enabled,
         ];
     }
 
@@ -87,13 +93,11 @@ function whmin_get_direct_connected_sites_data() {
  * AJAX handler to update a website's custom name.
  */
 function whmin_ajax_update_site_name() {
-    // Security checks
     check_ajax_referer('whmin_admin_nonce', 'nonce');
     if (!current_user_can('manage_options')) {
         wp_send_json_error(['message' => __('Permission denied.', 'whmin')], 403);
     }
 
-    // Sanitize input
     $user = isset($_POST['user']) ? sanitize_text_field($_POST['user']) : '';
     $new_name = isset($_POST['new_name']) ? sanitize_text_field($_POST['new_name']) : '';
 
@@ -101,7 +105,6 @@ function whmin_ajax_update_site_name() {
         wp_send_json_error(['message' => __('Invalid data provided.', 'whmin')], 400);
     }
     
-    // Get existing names, update the specific one, and save
     $custom_names = get_option('whmin_custom_site_names', []);
     $custom_names[$user] = $new_name;
     
@@ -115,6 +118,44 @@ function whmin_ajax_update_site_name() {
 add_action('wp_ajax_whmin_update_site_name', 'whmin_ajax_update_site_name');
 
 /**
+ * NEW: AJAX handler to toggle monitoring for a direct site
+ */
+function whmin_ajax_toggle_direct_monitoring() {
+    check_ajax_referer('whmin_admin_nonce', 'nonce');
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => __('Permission denied.', 'whmin')], 403);
+    }
+
+    $user = isset($_POST['user']) ? sanitize_text_field($_POST['user']) : '';
+
+    // Parse "enabled" robustly: accept 1/0, true/false, "on"/"off", etc.
+    $enabled_raw = $_POST['enabled'] ?? null;
+    $enabled = filter_var($enabled_raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+    if (empty($user) || $enabled === null) {
+        wp_send_json_error(['message' => __('Invalid data provided.', 'whmin')], 400);
+    }
+    
+    $monitoring_settings = get_option('whmin_direct_monitoring_settings', []);
+    if (!is_array($monitoring_settings)) {
+        $monitoring_settings = [];
+    }
+    $monitoring_settings[$user] = $enabled;
+
+    update_option('whmin_direct_monitoring_settings', $monitoring_settings);
+
+    $message = $enabled 
+        ? __('Monitoring enabled successfully.', 'whmin')
+        : __('Monitoring disabled successfully.', 'whmin');
+
+    wp_send_json_success([
+        'message' => $message,
+        'enabled' => $enabled
+    ]);
+}
+add_action('wp_ajax_whmin_toggle_direct_monitoring', 'whmin_ajax_toggle_direct_monitoring');
+
+/**
  * Helper function to format bytes into KB, MB, GB, etc.
  */
 function whmin_format_bytes($bytes, $precision = 2) { 
@@ -122,7 +163,6 @@ function whmin_format_bytes($bytes, $precision = 2) {
     $bytes = max($bytes, 0); 
     $pow = floor(($bytes ? log($bytes) : 0) / log(1024)); 
     $pow = min($pow, count($units) - 1); 
-    // Avoid division by zero
     $bytes /= (pow(1024, $pow) > 0 ? pow(1024, $pow) : 1);
     return round($bytes, $precision) . ' ' . $units[$pow]; 
 }

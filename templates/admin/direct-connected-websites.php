@@ -91,6 +91,16 @@ $whm_url = get_option('whmin_whm_server_url');
                                         title="<?php _e('Edit Friendly Name', 'whmin'); ?>">
                                         <i class="mdi mdi-pencil"></i>
                                     </button>
+                                    
+                                    <!-- NEW: Monitoring Toggle Button -->
+                                    <button
+                                        class="btn btn-sm <?php echo $site['monitoring_enabled'] ? 'btn-success' : 'btn-outline-secondary'; ?> toggle-monitoring-btn"
+                                        data-user="<?php echo esc_attr($site['user']); ?>"
+                                        data-enabled="<?php echo $site['monitoring_enabled'] ? '1' : '0'; ?>"
+                                        data-bs-toggle="tooltip"
+                                        title="<?php echo $site['monitoring_enabled'] ? __('Monitoring Active - Click to Disable', 'whmin') : __('Monitoring Disabled - Click to Enable', 'whmin'); ?>">
+                                        <i class="mdi mdi-<?php echo $site['monitoring_enabled'] ? 'eye' : 'eye-off'; ?>"></i>
+                                    </button>
                                 </td>
                             </tr>
                             <?php endforeach; ?>

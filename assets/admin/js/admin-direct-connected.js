@@ -166,4 +166,78 @@
         };
     }
 
+    $(document).on('click', '.toggle-monitoring-btn', function() {
+        const $button = $(this);
+        const user = $button.data('user');
+        const currentlyEnabled = $button.data('enabled') === '1' || $button.data('enabled') === 1;
+        const newEnabled = !currentlyEnabled;
+        
+        const actionText = newEnabled ? 'enable' : 'disable';
+        
+        Swal.fire({
+            title: newEnabled ? 'Enable Monitoring?' : 'Disable Monitoring?',
+            text: newEnabled 
+                ? 'This site will be included in status checks and graphs.' 
+                : 'This site will be excluded from status checks and graphs.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, ' + actionText,
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: newEnabled ? '#198754' : '#6c757d'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Show loading state
+                const originalHtml = $button.html();
+                $button.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+                
+                $.ajax({
+                    url: WHMIN_Admin.ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'whmin_toggle_direct_monitoring',
+                        nonce: WHMIN_Admin.nonce,
+                        user: user,
+                        enabled: newEnabled ? 1 : 0   // <= send 1/0 instead of true/false
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            toastr.success(response.data.message);
+                            
+                            // Update button appearance
+                            $button.data('enabled', newEnabled ? '1' : '0');
+                            $button.removeClass('btn-success btn-outline-secondary');
+                            $button.addClass(newEnabled ? 'btn-success' : 'btn-outline-secondary');
+                            $button.find('i').removeClass('mdi-eye mdi-eye-off');
+                            $button.find('i').addClass(newEnabled ? 'mdi-eye' : 'mdi-eye-off');
+                            $button.attr('title', newEnabled 
+                                ? 'Monitoring Active - Click to Disable' 
+                                : 'Monitoring Disabled - Click to Enable'
+                            );
+                            
+                            // Update row status badge
+                            const $row = $button.closest('tr');
+                            const $statusBadge = $row.find('.badge');
+                            if (!newEnabled) {
+                                $statusBadge.removeClass('bg-success-light text-success bg-danger-light text-danger');
+                                $statusBadge.addClass('bg-secondary-light text-secondary');
+                                $statusBadge.text('Monitoring Disabled');
+                            } else {
+                                // Reload to get correct status
+                                setTimeout(() => location.reload(), 1500);
+                            }
+                        } else {
+                            toastr.error(response.data.message || 'An error occurred');
+                        }
+                    },
+                    error: function() {
+                        toastr.error('Server error occurred');
+                    },
+                    complete: function() {
+                        $button.prop('disabled', false).html(originalHtml);
+                    }
+                });
+            }
+        });
+    });
+
 })(jQuery);

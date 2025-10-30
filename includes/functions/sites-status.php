@@ -139,7 +139,7 @@ function whmin_check_site_status($url) {
     $start_time = microtime(true);
     
     $response = wp_remote_head($url, [
-        'timeout'     => 10,
+        'timeout'     => 30,
         'sslverify'   => false,
         'redirection' => 5,
         'user-agent'  => 'WHM-Monitor-Status-Checker/1.0'

@@ -27,8 +27,15 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
     <header class="whmin-header">
         <img src="<?php echo esc_url($logo_url); ?>" alt="Logo" class="whmin-logo">
         <div class="whmin-overall-status whmin-status-<?php echo esc_attr($server_status); ?>">
-            <i class="mdi"></i>
-            <span><?php echo esc_html($data['overall_status']['text']); ?></span>
+        <i class="mdi"></i>
+            <span>
+                <?php 
+                echo esc_html($data['overall_status']['text']); 
+                if (isset($data['overall_status']['percent'])) {
+                    echo ' — ' . esc_html(number_format((float)$data['overall_status']['percent'], 2)) . '%';
+                }
+                ?>
+            </span>
         </div>
     </header>
 

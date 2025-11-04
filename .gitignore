@@ -32,6 +32,9 @@ wp-config.php
 # Log files
 *.log
 
+# Uploads
+/dist
+
 # htaccess
 /.htaccess
 
@@ -46,3 +49,6 @@ wp-config.php
 # Note: If you wish to whitelist themes,
 # uncomment the next line
 #/wp-content/themes
+whm-info.zip
+dist/whm-info-(servers-overwatch).0.1.0.zip
+dist/whm-info-(servers-overwatch).0.1.0.zip

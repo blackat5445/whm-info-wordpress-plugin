@@ -792,3 +792,38 @@
     }
 }
 
+.whmin-stats-grid--icons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+}
+.whmin-stat-item--stacked {
+    text-align: center;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,.04);
+    border-radius: 14px;
+    padding: 1rem .75rem 1.1rem;
+    box-shadow: 0 3px 15px rgba(15,23,42,.05);
+}
+.whmin-stat-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 9999px;
+    background: rgba(7,91,99,.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto .45rem;
+    color: #075b63;
+    font-size: 20px;
+}
+.whmin-stat-title {
+    font-size: .78rem;
+    opacity: .85;
+    margin-bottom: .2rem;
+}
+.whmin-stat-value {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #111827;
+}

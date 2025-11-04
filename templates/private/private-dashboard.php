@@ -36,6 +36,33 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
     opacity: .95;
 }
 .whmin-status-row.whmin-status-deactivated a { color: inherit; opacity: .9; }
+
+/* unit toggle */
+.whmin-unit-toggle {
+    display: flex;
+    gap: .5rem;
+    font-size: .7rem;
+    margin-left: auto;
+    align-items: center;
+}
+.whmin-unit-toggle span {
+    cursor: pointer;
+    color: #6b7280;
+    padding: 2px 6px;
+    border-radius: 9999px;
+    transition: background .15s ease, color .15s ease;
+}
+.whmin-unit-toggle span.active {
+    background: #075b63;
+    color: #fff;
+}
+
+/* make header flex row */
+.whmin-card.whmin-resource-card .whmin-card-header {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
 </style>
 
 <div class="whmin-public-status-page whmin-private-dashboard-page"> 
@@ -111,16 +138,28 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
                     <h4><i class="mdi mdi-account-multiple-outline"></i> <?php _e('Accounts Overview', 'whmin'); ?></h4>
                 </div>
                 <div class="whmin-card-body">
-                    <?php if (isset($account_summary['summary'])): ?>
-                        <div class="whmin-stats-grid">
-                            <?php foreach ($account_summary['summary'] as $label => $value): ?>
-                                <div class="whmin-stat-item">
-                                    <div class="whmin-stat-value"><?php echo esc_html($value); ?></div>
-                                    <div class="whmin-stat-label"><?php echo esc_html($label); ?></div>
+                <?php if (isset($account_summary['summary'])): ?>
+                    <div class="whmin-stats-grid whmin-stats-grid--icons">
+                        <?php
+                        // map labels to icons
+                        $stat_icons = [
+                            __('Total Accounts', 'whmin')    => 'mdi-account-multiple',
+                            __('Active Accounts', 'whmin')   => 'mdi-account-check',
+                            __('Suspended Accounts', 'whmin')=> 'mdi-account-off',
+                        ];
+                        foreach ($account_summary['summary'] as $label => $value): 
+                            $icon = isset($stat_icons[$label]) ? $stat_icons[$label] : 'mdi-information-outline';
+                        ?>
+                            <div class="whmin-stat-item whmin-stat-item--stacked">
+                                <div class="whmin-stat-icon">
+                                    <i class="mdi <?php echo esc_attr($icon); ?>"></i>
                                 </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php else: ?>
+                                <div class="whmin-stat-title"><?php echo esc_html($label); ?></div>
+                                <div class="whmin-stat-value"><?php echo esc_html($value); ?></div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
                         <p class="whmin-error"><?php echo esc_html($account_summary['error'] ?? __('No data available', 'whmin')); ?></p>
                     <?php endif; ?>
                 </div>
@@ -161,22 +200,46 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
         <!-- Resource Usage Section -->
         <div class="whmin-grid">
             <!-- Disk Usage Card -->
-            <div class="whmin-card whmin-resource-card">
+            <div class="whmin-card whmin-resource-card" data-unit-card="disk">
                 <div class="whmin-card-header">
                     <h4><i class="mdi mdi-harddisk"></i> <?php _e('Disk Usage', 'whmin'); ?></h4>
+                    <!-- unit toggle -->
+                    <div class="whmin-unit-toggle" data-unit-target="disk">
+                        <span class="active" data-unit="MB">MB</span>
+                        <span data-unit="GB">GB</span>
+                    </div>
                 </div>
                 <div class="whmin-card-body">
-                    <?php if (isset($account_summary['disk']) && !isset($account_summary['error'])): ?>
-                        <div class="whmin-resource-summary">
-                            <div class="whmin-resource-values">
-                                <span class="whmin-resource-used"><?php echo esc_html($account_summary['disk']['used']); ?> <?php echo esc_html($account_summary['disk']['unit']); ?></span>
-                                <span class="whmin-resource-separator">/</span>
-                                <span class="whmin-resource-total"><?php echo esc_html($account_summary['disk']['limit']); ?> <?php echo esc_html($account_summary['disk']['unit']); ?></span>
-                            </div>
-                            <?php if ($account_summary['disk']['percentage'] > 0): ?>
-                                <div class="whmin-resource-percentage"><?php echo esc_html($account_summary['disk']['percentage']); ?>%</div>
-                            <?php endif; ?>
+                <?php if (isset($account_summary['disk']) && !isset($account_summary['error'])): ?>
+                    <?php
+                    // raw numbers in MB
+                    $disk_used_raw  = floatval($account_summary['disk']['used'] ?? 0);
+                    $disk_limit_raw = $account_summary['disk']['limit'];
+                    $disk_used_human  = whmin_format_mb_human($disk_used_raw);
+                    $disk_limit_human = is_numeric($disk_limit_raw)
+                        ? whmin_format_mb_human($disk_limit_raw)
+                        : $disk_limit_raw; // "unlimited"
+                    ?>
+                    <div class="whmin-resource-summary">
+                        <div class="whmin-resource-values">
+                            <span class="whmin-resource-used"
+                                  data-mb="<?php echo esc_attr($disk_used_raw); ?>"
+                                  data-gb="<?php echo is_numeric($disk_used_raw) ? esc_attr($disk_used_raw / 1024) : ''; ?>"
+                                  data-unit-label="MB">
+                                <?php echo esc_html($disk_used_human); ?>
+                            </span>
+                            <span class="whmin-resource-separator">/</span>
+                            <span class="whmin-resource-total"
+                                  data-mb="<?php echo is_numeric($disk_limit_raw) ? esc_attr($disk_limit_raw) : ''; ?>"
+                                  data-gb="<?php echo is_numeric($disk_limit_raw) ? esc_attr($disk_limit_raw / 1024) : ''; ?>"
+                                  data-unit-label="MB">
+                                <?php echo esc_html($disk_limit_human); ?>
+                            </span>
                         </div>
+                        <?php if ($account_summary['disk']['percentage'] > 0): ?>
+                            <div class="whmin-resource-percentage"><?php echo esc_html($account_summary['disk']['percentage']); ?>%</div>
+                        <?php endif; ?>
+                    </div>
                         <?php if ($account_summary['disk']['percentage'] > 0): ?>
                             <div class="whmin-progress-bar">
                                 <div class="whmin-progress-fill" 
@@ -188,13 +251,20 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
                         
                         <!-- Top Disk Users -->
                         <?php if (isset($disk_usage['top_users']) && !empty($disk_usage['top_users'])): ?>
-                            <div class="whmin-top-users">
+                            <div class="whmin-top-users" data-unit-scope="disk">
                                 <h5><?php _e('Top Disk Users', 'whmin'); ?></h5>
                                 <div class="whmin-top-users-list">
-                                    <?php foreach (array_slice($disk_usage['top_users'], 0, 5) as $user): ?>
+                                    <?php foreach (array_slice($disk_usage['top_users'], 0, 5) as $user): 
+                                        $user_used_mb = floatval($user['used'] ?? 0);
+                                    ?>
                                         <div class="whmin-user-item">
                                             <span class="whmin-user-domain"><?php echo esc_html($user['domain']); ?></span>
-                                            <span class="whmin-user-usage"><?php echo esc_html(round($user['used'], 2)); ?> MB</span>
+                                            <span class="whmin-user-usage"
+                                                  data-mb="<?php echo esc_attr($user_used_mb); ?>"
+                                                  data-gb="<?php echo esc_attr($user_used_mb / 1024); ?>"
+                                                  data-unit-label="MB">
+                                                <?php echo esc_html( whmin_format_mb_human($user_used_mb) ); ?>
+                                            </span>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
@@ -207,17 +277,41 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
             </div>
 
             <!-- Bandwidth Usage Card -->
-            <div class="whmin-card whmin-resource-card">
+            <div class="whmin-card whmin-resource-card" data-unit-card="bandwidth">
                 <div class="whmin-card-header">
                     <h4><i class="mdi mdi-swap-horizontal"></i> <?php _e('Bandwidth Usage', 'whmin'); ?></h4>
+                    <!-- unit toggle -->
+                    <div class="whmin-unit-toggle" data-unit-target="bandwidth">
+                        <span class="active" data-unit="MB">MB</span>
+                        <span data-unit="GB">GB</span>
+                    </div>
                 </div>
                 <div class="whmin-card-body">
                     <?php if (isset($account_summary['bandwidth']) && !isset($account_summary['error'])): ?>
                         <div class="whmin-resource-summary">
+                            <?php
+                            // bandwidth comes from summary in MB
+                            $bw_used_raw = floatval($account_summary['bandwidth']['used'] ?? 0);
+                            $bw_limit_raw = $account_summary['bandwidth']['limit'];
+                            $bw_used_human = whmin_format_mb_human($bw_used_raw);
+                            $bw_limit_human = is_numeric($bw_limit_raw)
+                                ? whmin_format_mb_human($bw_limit_raw)
+                                : $bw_limit_raw;
+                            ?>
                             <div class="whmin-resource-values">
-                                <span class="whmin-resource-used"><?php echo esc_html($account_summary['bandwidth']['used']); ?> <?php echo esc_html($account_summary['bandwidth']['unit']); ?></span>
+                                <span class="whmin-resource-used"
+                                      data-mb="<?php echo esc_attr($bw_used_raw); ?>"
+                                      data-gb="<?php echo is_numeric($bw_used_raw) ? esc_attr($bw_used_raw / 1024) : ''; ?>"
+                                      data-unit-label="MB">
+                                    <?php echo esc_html($bw_used_human); ?>
+                                </span>
                                 <span class="whmin-resource-separator">/</span>
-                                <span class="whmin-resource-total"><?php echo esc_html($account_summary['bandwidth']['limit']); ?> <?php echo esc_html($account_summary['bandwidth']['unit']); ?></span>
+                                <span class="whmin-resource-total"
+                                      data-mb="<?php echo is_numeric($bw_limit_raw) ? esc_attr($bw_limit_raw) : ''; ?>"
+                                      data-gb="<?php echo is_numeric($bw_limit_raw) ? esc_attr($bw_limit_raw / 1024) : ''; ?>"
+                                      data-unit-label="MB">
+                                    <?php echo esc_html($bw_limit_human); ?>
+                                </span>
                             </div>
                             <?php if ($account_summary['bandwidth']['percentage'] > 0): ?>
                                 <div class="whmin-resource-percentage"><?php echo esc_html($account_summary['bandwidth']['percentage']); ?>%</div>
@@ -234,13 +328,23 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
                         
                         <!-- Top Bandwidth Users -->
                         <?php if (isset($system_info['bandwidth']['top_users']) && !empty($system_info['bandwidth']['top_users'])): ?>
-                            <div class="whmin-top-users">
+                            <div class="whmin-top-users" data-unit-scope="bandwidth">
                                 <h5><?php _e('Top Bandwidth Users', 'whmin'); ?></h5>
                                 <div class="whmin-top-users-list">
-                                    <?php foreach (array_slice($system_info['bandwidth']['top_users'], 0, 5) as $user): ?>
+                                    <?php foreach (array_slice($system_info['bandwidth']['top_users'], 0, 5) as $user): 
+                                        // source is BYTES
+                                        $user_bytes = floatval($user['totalbytes'] ?? 0);
+                                        $user_mb = $user_bytes / 1024 / 1024;
+                                        $user_gb = $user_mb / 1024;
+                                    ?>
                                         <div class="whmin-user-item">
                                             <span class="whmin-user-domain"><?php echo esc_html($user['acct'] ?? $user['domain'] ?? $user['user'] ?? 'unknown'); ?></span>
-                                            <span class="whmin-user-usage"><?php echo esc_html(round(floatval($user['totalbytes'] ?? 0) / 1024 / 1024, 2)); ?> MB</span>
+                                            <span class="whmin-user-usage"
+                                                  data-mb="<?php echo esc_attr(round($user_mb, 2)); ?>"
+                                                  data-gb="<?php echo esc_attr(round($user_gb, 2)); ?>"
+                                                  data-unit-label="MB">
+                                                <?php echo esc_html(round($user_mb, 2)); ?> MB
+                                            </span>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>

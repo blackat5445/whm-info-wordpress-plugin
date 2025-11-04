@@ -37,13 +37,78 @@ function whmin_ajax_refresh_server_data() {
 add_action('wp_ajax_whmin_refresh_server_data', 'whmin_ajax_refresh_server_data');
 
 /**
+ * Convert WHM size strings to MB.
+ * Examples:
+ *  "123M"  -> 123
+ *  "1G"    -> 1024
+ *  "512K"  -> 0.5
+ *  "123M/500M" -> 123 (we handle X/Y in the calling code too)
+ */
+function whmin_parse_whm_size_to_mb( $val ) {
+    if ($val === null || $val === '') {
+        return 0.0;
+    }
+
+    // sometimes WHM already returns plain numbers (assume MB)
+    if (is_numeric($val)) {
+        return (float) $val;
+    }
+
+    $val = trim($val);
+
+    // match "123M", "1.5G", "500K"
+    if (preg_match('/^([\d\.]+)\s*([KMG])?/i', $val, $m)) {
+        $num  = (float) $m[1];
+        $unit = isset($m[2]) ? strtoupper($m[2]) : 'M'; // default MB
+
+        switch ($unit) {
+            case 'G':
+                return $num * 1024;
+            case 'K':
+                return $num / 1024;
+            default:
+                return $num; // M
+        }
+    }
+
+    return 0.0;
+}
+
+/**
+ * Get bandwidth usage from showbw, indexed by username.
+ * Returns bytes, we will convert to MB in callers.
+ */
+function whmin_get_bandwidth_map() {
+    $bw_data = whmin_make_whm_api_call('showbw');
+
+    if (is_wp_error($bw_data) || empty($bw_data['data']['acct']) || !is_array($bw_data['data']['acct'])) {
+        return [];
+    }
+
+    $map = [];
+    foreach ($bw_data['data']['acct'] as $acct) {
+        // 'user' is the most reliable key
+        $user = $acct['user'] ?? ($acct['acct'] ?? null);
+        if (!$user) {
+            continue;
+        }
+
+        // totalbytes is the actual total used bandwidth
+        $bytes = isset($acct['totalbytes']) ? (float) $acct['totalbytes'] : 0.0;
+        $map[$user] = $bytes;
+    }
+
+    return $map;
+}
+
+/**
  * Fetches comprehensive Account Summary data.
- * FIXED: Proper bandwidth calculation
+ * FIXED: Proper disk parsing + real bandwidth from showbw
  * @return array
  */
 function whmin_get_account_summary() {
     $data = whmin_make_whm_api_call('listaccts');
-    
+
     if (is_wp_error($data)) {
         return ['error' => $data->get_error_message()];
     }
@@ -52,75 +117,89 @@ function whmin_get_account_summary() {
     }
 
     $accounts = $data['data']['acct'];
-    $total_disk_used = 0;
-    $total_disk_limit = 0;
+
+    // NEW: real bandwidth map from showbw (bytes, keyed by username)
+    $bw_map = whmin_get_bandwidth_map();
+
+    $total_disk_used     = 0;
+    $total_disk_limit    = 0;
     $total_bandwidth_used = 0;
     $total_bandwidth_limit = 0;
-    $total_emails = 0;
-    $total_domains = 0;
-    $total_subdomains = 0;
-    $total_parked = 0;
-    $total_addon = 0;
-    $packages = [];
-    $suspended_count = 0;
-    $has_bandwidth_data = false;
-    
+    $total_emails        = 0;
+    $total_domains       = 0;
+    $total_subdomains    = 0;
+    $total_parked        = 0;
+    $total_addon         = 0;
+    $packages            = [];
+    $suspended_count     = 0;
+    $has_bandwidth_data  = false;
+
     foreach ($accounts as $account) {
-        // Disk usage - handle X/Y format
+        // ---------- DISK (now unit-aware) ----------
         $disk_used_raw = $account['diskused'] ?? 0;
+        // sometimes "123M/500M"
         if (is_string($disk_used_raw) && strpos($disk_used_raw, '/') !== false) {
-            $parts = explode('/', $disk_used_raw);
+            $parts = explode('/', $disk_used_raw, 2);
             $disk_used_raw = $parts[0];
         }
-        $total_disk_used += floatval($disk_used_raw);
-        
+        $disk_used_mb = whmin_parse_whm_size_to_mb($disk_used_raw);
+        $total_disk_used += $disk_used_mb;
+
         $disk_limit = $account['disklimit'] ?? 'unlimited';
-        if ($disk_limit !== 'unlimited' && is_numeric($disk_limit)) {
-            $total_disk_limit += floatval($disk_limit);
+        if ($disk_limit !== 'unlimited' && $disk_limit !== '0') {
+            $total_disk_limit += whmin_parse_whm_size_to_mb($disk_limit);
         }
-        
-        // Bandwidth - FIXED: Check multiple possible keys
-        $bw_used = 0;
-        if (isset($account['bwused']) && is_numeric($account['bwused'])) {
-            $bw_used = floatval($account['bwused']);
+
+        // ---------- BANDWIDTH (prefer showbw) ----------
+        $user   = $account['user'] ?? null;
+        $bw_used_mb = 0;
+
+        if ($user && isset($bw_map[$user])) {
+            // showbw returns BYTES → MB
+            $bw_used_mb = $bw_map[$user] / (1024 * 1024);
             $has_bandwidth_data = true;
-        } elseif (isset($account['bandwidth_used']) && is_numeric($account['bandwidth_used'])) {
-            $bw_used = floatval($account['bandwidth_used']);
-            $has_bandwidth_data = true;
+        } else {
+            // fallback to whatever listaccts gives
+            if (isset($account['bwused']) && is_numeric($account['bwused'])) {
+                $bw_used_mb = (float) $account['bwused'];
+                $has_bandwidth_data = true;
+            } elseif (isset($account['bandwidth_used']) && is_numeric($account['bandwidth_used'])) {
+                $bw_used_mb = (float) $account['bandwidth_used'];
+                $has_bandwidth_data = true;
+            }
         }
-        $total_bandwidth_used += $bw_used;
-        
+
+        $total_bandwidth_used += $bw_used_mb;
+
+        // limit (usually in MB or 'unlimited')
         $bw_limit = $account['bwlimit'] ?? 'unlimited';
         if ($bw_limit !== 'unlimited' && is_numeric($bw_limit)) {
-            $total_bandwidth_limit += floatval($bw_limit);
+            $total_bandwidth_limit += (float) $bw_limit;
         }
-        
-        // Email accounts
-        $total_emails += intval($account['email'] ?? 0);
-        
-        // Domains
-        $total_domains += intval($account['domain'] ?? 1);
-        $total_subdomains += intval($account['subdomain'] ?? 0);
-        $total_parked += intval($account['parked'] ?? 0);
-        $total_addon += intval($account['addon'] ?? 0);
-        
-        // Packages
+
+        // ---------- EMAIL / DOMAINS ----------
+        $total_emails     += (int) ($account['email'] ?? 0);
+        $total_domains    += 1; // main domain
+        $total_subdomains += (int) ($account['subdomain'] ?? 0);
+        $total_parked     += (int) ($account['parked'] ?? 0);
+        $total_addon      += (int) ($account['addon'] ?? 0);
+
+        // ---------- PACKAGES ----------
         if (!empty($account['plan'])) {
             $packages[$account['plan']] = ($packages[$account['plan']] ?? 0) + 1;
         }
-        
-        // Status checks
-        if (isset($account['suspended']) && $account['suspended'] == 1) {
+
+        // ---------- STATUS ----------
+        if (isset($account['suspended']) && (int) $account['suspended'] === 1) {
             $suspended_count++;
         }
     }
-    
-    // Calculate percentages
-    $disk_percentage = ($total_disk_limit > 0) 
-        ? round(($total_disk_used / $total_disk_limit) * 100, 2) 
+
+    // ---------- PERCENTAGES ----------
+    $disk_percentage = ($total_disk_limit > 0)
+        ? round(($total_disk_used / $total_disk_limit) * 100, 2)
         : 0;
-    
-    // FIXED: Handle bandwidth properly
+
     $bandwidth_percentage = 0;
     if ($total_bandwidth_limit > 0 && $has_bandwidth_data) {
         $bandwidth_percentage = round(($total_bandwidth_used / $total_bandwidth_limit) * 100, 2);
@@ -128,32 +207,32 @@ function whmin_get_account_summary() {
 
     return [
         'summary' => [
-            __('Total Accounts', 'whmin') => count($accounts),
-            __('Active Accounts', 'whmin') => count($accounts) - $suspended_count,
+            __('Total Accounts', 'whmin')    => count($accounts),
+            __('Active Accounts', 'whmin')   => count($accounts) - $suspended_count,
             __('Suspended Accounts', 'whmin') => $suspended_count,
         ],
         'disk' => [
-            'used' => round($total_disk_used, 2),
-            'limit' => $total_disk_limit > 0 ? round($total_disk_limit, 2) : 'unlimited',
+            'used'       => round($total_disk_used, 2),
+            'limit'      => $total_disk_limit > 0 ? round($total_disk_limit, 2) : 'unlimited',
             'percentage' => $disk_percentage,
-            'unit' => 'MB'
+            'unit'       => 'MB',
         ],
         'bandwidth' => [
-            'used' => round($total_bandwidth_used, 2),
-            'limit' => $total_bandwidth_limit > 0 ? round($total_bandwidth_limit, 2) : 'unlimited',
+            'used'       => round($total_bandwidth_used, 2),
+            'limit'      => $total_bandwidth_limit > 0 ? round($total_bandwidth_limit, 2) : 'unlimited',
             'percentage' => $bandwidth_percentage,
-            'unit' => 'MB',
-            'has_data' => $has_bandwidth_data
+            'unit'       => 'MB',
+            'has_data'   => $has_bandwidth_data,
         ],
         'resources' => [
             __('Email Accounts', 'whmin') => $total_emails,
-            __('Total Domains', 'whmin') => $total_domains,
-            __('Subdomains', 'whmin') => $total_subdomains,
+            __('Total Domains', 'whmin')  => $total_domains,
+            __('Subdomains', 'whmin')     => $total_subdomains,
             __('Parked Domains', 'whmin') => $total_parked,
-            __('Addon Domains', 'whmin') => $total_addon,
+            __('Addon Domains', 'whmin')  => $total_addon,
         ],
-        'packages' => $packages,
-        'total_accounts' => count($accounts),
+        'packages'      => $packages,
+        'total_accounts'=> count($accounts),
     ];
 }
 
@@ -361,57 +440,64 @@ function whmin_get_apache_status() {
  */
 function whmin_get_disk_usage_info() {
     $data = whmin_make_whm_api_call('listaccts');
-    
+
     if (is_wp_error($data)) {
         return ['error' => $data->get_error_message()];
     }
-    
+
     if (empty($data['data']['acct']) || !is_array($data['data']['acct'])) {
         return ['error' => __('No account data found.', 'whmin')];
     }
 
-    $accounts = $data['data']['acct'];
-    $total_disk_used = 0;
-    $total_disk_limit = 0;
-    $unlimited_count = 0;
-    $top_users = [];
-    
+    $accounts          = $data['data']['acct'];
+    $total_disk_used   = 0;
+    $total_disk_limit  = 0;
+    $unlimited_count   = 0;
+    $top_users         = [];
+
     foreach ($accounts as $account) {
-        $disk_used = floatval($account['diskused'] ?? 0);
-        $disk_limit = $account['disklimit'] ?? 'unlimited';
-        
-        $total_disk_used += $disk_used;
-        
-        if ($disk_limit === 'unlimited') {
-            $unlimited_count++;
-        } else {
-            $total_disk_limit += floatval($disk_limit);
+        $disk_used_raw = $account['diskused'] ?? 0;
+        // sometimes "123M/500M"
+        if (is_string($disk_used_raw) && strpos($disk_used_raw, '/') !== false) {
+            $parts = explode('/', $disk_used_raw, 2);
+            $disk_used_raw = $parts[0];
         }
-        
+        $disk_used_mb = whmin_parse_whm_size_to_mb($disk_used_raw);
+
+        $disk_limit = $account['disklimit'] ?? 'unlimited';
+        if ($disk_limit !== 'unlimited' && $disk_limit !== '0') {
+            $disk_limit_mb = whmin_parse_whm_size_to_mb($disk_limit);
+            $total_disk_limit += $disk_limit_mb;
+        } else {
+            $unlimited_count++;
+        }
+
+        $total_disk_used += $disk_used_mb;
+
         // Track top disk users
         $top_users[] = [
-            'user' => $account['user'] ?? 'unknown',
+            'user'   => $account['user'] ?? 'unknown',
             'domain' => $account['domain'] ?? 'unknown',
-            'used' => $disk_used,
+            'used'   => $disk_used_mb,
         ];
     }
-    
+
     // Sort by usage and get top 10
     usort($top_users, function($a, $b) {
-        return $b['used'] - $a['used'];
+        return $b['used'] <=> $a['used'];
     });
     $top_users = array_slice($top_users, 0, 10);
-    
-    $usage_percentage = ($total_disk_limit > 0) 
-        ? round(($total_disk_used / $total_disk_limit) * 100, 2) 
+
+    $usage_percentage = ($total_disk_limit > 0)
+        ? round(($total_disk_used / $total_disk_limit) * 100, 2)
         : 0;
-    
+
     return [
-        'total_used' => round($total_disk_used, 2),
-        'total_limit' => $total_disk_limit > 0 ? round($total_disk_limit, 2) : 'unlimited',
-        'percentage' => $usage_percentage,
-        'unlimited_count' => $unlimited_count,
-        'top_users' => $top_users,
+        'total_used'     => round($total_disk_used, 2),
+        'total_limit'    => $total_disk_limit > 0 ? round($total_disk_limit, 2) : 'unlimited',
+        'percentage'     => $usage_percentage,
+        'unlimited_count'=> $unlimited_count,
+        'top_users'      => $top_users,
     ];
 }
 
@@ -434,4 +520,14 @@ function whmin_get_private_dashboard_data() {
     ];
     
     return $public_data;
+}
+
+// Convert MB (numeric) to "123 MB" or "1.23 GB"
+function whmin_format_mb_human( $mb, $precision = 2 ) {
+    $mb = (float) $mb;
+    if ($mb >= 1024) {
+        // convert to GB
+        return round($mb / 1024, $precision) . ' GB';
+    }
+    return round($mb, $precision) . ' MB';
 }

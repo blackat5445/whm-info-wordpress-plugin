@@ -296,5 +296,44 @@
 
     // Make it globally accessible
     window.WHMINPrivateDashboard = WHMINPrivateDashboard;
+    function formatNumber(num) {
+        if (isNaN(num)) return num;
+        var fixed = parseFloat(num).toFixed(2);
+        return fixed.replace(/\.?0+$/, '');
+    }
 
+    function applyUnitToCard(cardKey, unit) {
+        var $card = $('[data-unit-card="'+cardKey+'"]');
+        if (!$card.length) return;
+
+        $card.find('[data-mb]').each(function() {
+            var $el = $(this);
+            var mb = parseFloat($el.data('mb'));
+            var gb = parseFloat($el.data('gb'));
+            var noData = (!mb && !gb && !$el.data('mb'));
+
+            if (noData) return;
+
+            if (unit === 'GB') {
+                var val = gb ? gb : (mb / 1024);
+                $el.text(formatNumber(val) + ' GB').attr('data-unit-label', 'GB');
+            } else {
+                $el.text(formatNumber(mb) + ' MB').attr('data-unit-label', 'MB');
+            }
+        });
+    }
+
+    $(document).ready(function(){
+        $('.whmin-unit-toggle span').on('click', function(){
+            var $btn = $(this);
+            var unit = $btn.data('unit');
+            var $toggle = $btn.closest('.whmin-unit-toggle');
+            var target = $toggle.data('unit-target');
+
+            $toggle.find('span').removeClass('active');
+            $btn.addClass('active');
+
+            applyUnitToCard(target, unit);
+        });
+    });
 })(jQuery);

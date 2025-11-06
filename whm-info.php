@@ -3,7 +3,7 @@
  * Plugin Name: WHM Info
  * Plugin URI: https://www.agenziamagma.it
  * Description: Key plugin to connect to WHM software and show the status of the services.
- * Version: 0.1.1
+ * Version: 0.2.0
  * Author: Kasra Falahati, Agenzia Magma
  * Author URI: https://www.kasra.eu
  * License: GPL-2.0+
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('WHMIN_VERSION', '0.1.1');
+define('WHMIN_VERSION', '0.2.0');
 define('WHMIN_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('WHMIN_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('WHMIN_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -74,13 +74,11 @@ register_deactivation_hook(__FILE__, function () {
 });
 
 /**
- * Runtime safety net: if the event disappears, recreate it after all files are loaded.
+ * Runtime safety net: ensure the cron event exists and uses current settings.
  */
 add_action('plugins_loaded', function () {
-    if (!wp_next_scheduled('whmin_status_check_event')) {
-        // By now, the normal cron_schedules filter in sites-status.php is loaded.
-        $now  = time();
-        $next = $now + (15 * MINUTE_IN_SECONDS - ($now % (15 * MINUTE_IN_SECONDS)));
-        wp_schedule_event($next, 'fifteen_minutes', 'whmin_status_check_event');
+    // By now, sites-status.php is loaded and our helpers exist.
+    if (function_exists('whmin_schedule_status_event_with_current_settings')) {
+        whmin_schedule_status_event_with_current_settings(false);
     }
 });

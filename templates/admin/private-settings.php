@@ -1,5 +1,34 @@
 <?php
 if (!defined('ABSPATH')) exit;
+
+// Get private settings 
+$private_settings = whmin_get_private_settings();
+
+// Current cron schedule slug
+$current_cron_slug = isset($private_settings['status_cron_schedule'])
+    ? $private_settings['status_cron_schedule']
+    : 'whmin_15_minutes';
+
+// Available cron options (slug => label)
+$cron_options = array(
+    'whmin_5_minutes'   => __('Every 5 Minutes', 'whmin'),
+    'whmin_10_minutes'  => __('Every 10 Minutes', 'whmin'),
+    'whmin_15_minutes'  => __('Every 15 Minutes', 'whmin'),
+    'whmin_30_minutes'  => __('Every 30 Minutes', 'whmin'),
+    'whmin_60_minutes'  => __('Every 60 Minutes', 'whmin'),
+);
+
+// Server data cache interval (minutes)
+$server_cache_minutes = isset($private_settings['server_data_cache_minutes'])
+    ? (int) $private_settings['server_data_cache_minutes']
+    : 5;
+
+// Site status HTTP timeout (seconds)
+$site_timeout = isset($private_settings['site_status_timeout'])
+    ? (int) $private_settings['site_status_timeout']
+    : 8;
+
+$last_check = (int) get_option('whmin_last_status_check', 0);
 ?>
 <div class="card whmin-card shadow-lg border-0 mb-4">
     <div class="card-body p-4">
@@ -7,90 +36,154 @@ if (!defined('ABSPATH')) exit;
             <i class="mdi mdi-shield-lock-outline text-primary me-2"></i>
             <?php _e('Private Settings', 'whmin'); ?>
         </h3>
-        <p class="text-muted">
-            <?php _e('Configure private or internal settings for the plugin that are not exposed publicly.', 'whmin'); ?>
+        <p class="text-muted mb-0">
+            <?php _e('Configure internal monitoring, refresh schedules and timeouts used by the private dashboard.', 'whmin'); ?>
         </p>
     </div>
 </div>
 
-<!-- Manual Data Refresh Card -->
-<div class="card whmin-card shadow-lg border-0 mt-4">
+<!-- Manual Site Status Refresh (full-width card) -->
+<div class="card whmin-card shadow-lg border-0 mb-4">
     <div class="card-body p-4">
         <h4 class="card-title mb-3">
-            <i class="mdi mdi-refresh text-primary me-2"></i>
-            <?php _e('Manual Data Refresh', 'whmin'); ?>
+            <i class="mdi mdi-web-refresh text-primary me-2"></i>
+            <?php _e('Manual Site Status Refresh', 'whmin'); ?>
         </h4>
-        
-        <div class="row">
-            <!-- Status Data Refresh -->
-            <div class="col-md-6 mb-3">
-                <div class="border rounded p-3 h-100">
-                    <h5 class="mb-2">
-                        <i class="mdi mdi-web-check me-2 text-success"></i>
-                        <?php _e('Site Status Data', 'whmin'); ?>
-                    </h5>
-                    <p class="text-muted small mb-3">
-                        <?php _e('The plugin automatically checks site statuses every 15 minutes. Click below to force an immediate refresh of all site status checks.', 'whmin'); ?>
-                    </p>
-                    <button id="manual-status-refresh-btn" class="btn btn-success w-100">
-                        <i class="mdi mdi-web-refresh me-2"></i>
-                        <?php _e('Refresh Site Statuses', 'whmin'); ?>
-                    </button>
-                    <div id="last-status-check" class="mt-2 text-center small text-muted">
-                        <?php 
-                        $last_check = get_option('whmin_last_status_check', 0);
-                        if ($last_check > 0) {
+        <p class="text-muted">
+            <?php _e('The plugin automatically checks website statuses on a schedule. Use this button to force an immediate refresh of all monitored sites.', 'whmin'); ?>
+        </p>
+        <button id="manual-status-refresh-btn" class="btn btn-success">
+            <i class="mdi mdi-web-refresh me-2"></i>
+            <?php _e('Refresh Site Statuses Now', 'whmin'); ?>
+        </button>
+
+        <div class="mt-3 small text-muted">
+            <?php if ($last_check > 0): ?>
+                <div id="last-status-check">
+                    <?php
+                    printf(
+                        __('Last automatic check: %s ago', 'whmin'),
+                        human_time_diff($last_check, current_time('timestamp'))
+                    );
+                    ?>
+                </div>
+            <?php else: ?>
+                <div id="last-status-check">
+                    <?php _e('Last automatic check: never run', 'whmin'); ?>
+                </div>
+            <?php endif; ?>
+            <div class="mt-1">
+                <strong><?php _e('Next scheduled check:', 'whmin'); ?></strong>
+                <?php echo whmin_get_next_cron_time(); ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manual Server / WHM Data Refresh (full-width card) -->
+<div class="card whmin-card shadow-lg border-0 mb-4">
+    <div class="card-body p-4">
+        <h4 class="card-title mb-3">
+            <i class="mdi mdi-server-network text-primary me-2"></i>
+            <?php _e('Manual Server & WHM Data Refresh', 'whmin'); ?>
+        </h4>
+        <p class="text-muted">
+            <?php _e('Refresh cached data fetched from your WHM server such as disk usage, bandwidth, accounts and system information used on the private dashboard.', 'whmin'); ?>
+        </p>
+        <button id="manual-server-refresh-btn" class="btn btn-primary">
+            <i class="mdi mdi-server-refresh me-2"></i>
+            <?php _e('Refresh Server Data Now', 'whmin'); ?>
+        </button>
+        <div class="mt-2 small text-muted">
+            <?php _e('This will clear and rebuild the cached server data used for charts and statistics.', 'whmin'); ?>
+        </div>
+    </div>
+</div>
+
+<!-- Automation & Performance Settings -->
+<form method="post" action="options.php" class="whmin-settings-form">
+    <?php settings_fields('whmin_private_settings'); ?>
+
+    <div class="card whmin-card shadow-lg border-0 mb-4">
+        <div class="card-body p-4">
+            <h4 class="card-title mb-3">
+                <i class="mdi mdi-timer-cog-outline text-primary me-2"></i>
+                <?php _e('Automation & Performance', 'whmin'); ?>
+            </h4>
+
+            <!-- Cron interval for site status checks -->
+            <div class="mb-4">
+                <label for="whmin_status_cron_schedule" class="form-label">
+                    <?php _e('Site Status Check Interval (Cron)', 'whmin'); ?>
+                </label>
+                <select
+                    id="whmin_status_cron_schedule"
+                    name="whmin_private_settings[status_cron_schedule]"
+                    class="form-select"
+                >
+                    <?php foreach ($cron_options as $slug => $label): ?>
+                        <option value="<?php echo esc_attr($slug); ?>" <?php selected($slug, $current_cron_slug); ?>>
+                            <?php echo esc_html($label); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="form-text">
+                    <?php _e('Controls how often the background cron job checks all sites (affects both public and private dashboards).', 'whmin'); ?>
+                </div>
+            </div>
+
+            <!-- Server data cache TTL -->
+            <div class="mb-4">
+                <label for="whmin_server_data_cache_minutes" class="form-label">
+                    <?php _e('Server Data Refresh Interval (Private Dashboard Cache)', 'whmin'); ?>
+                </label>
+                <select
+                    id="whmin_server_data_cache_minutes"
+                    name="whmin_private_settings[server_data_cache_minutes]"
+                    class="form-select"
+                >
+                    <?php
+                    $server_ttl_choices = array(2, 5, 10, 30, 60);
+                    foreach ($server_ttl_choices as $minutes):
+                    ?>
+                        <option value="<?php echo esc_attr($minutes); ?>" <?php selected($minutes, $server_cache_minutes); ?>>
+                            <?php
                             printf(
-                                __('Last checked: %s ago', 'whmin'),
-                                human_time_diff($last_check, current_time('timestamp'))
+                                _n('%d minute', '%d minutes', $minutes, 'whmin'),
+                                $minutes
                             );
-                        } else {
-                            _e('Never checked', 'whmin');
-                        }
-                        ?>
-                    </div>
+                            ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="form-text">
+                    <?php _e('Controls how long WHM server statistics are cached before being refetched for the private dashboard.', 'whmin'); ?>
                 </div>
             </div>
-            
-            <!-- Server Data Refresh -->
-            <div class="col-md-6 mb-3">
-                <div class="border rounded p-3 h-100">
-                    <h5 class="mb-2">
-                        <i class="mdi mdi-server me-2 text-primary"></i>
-                        <?php _e('Server & WHM Data', 'whmin'); ?>
-                    </h5>
-                    <p class="text-muted small mb-3">
-                        <?php _e('Fetch fresh data from your WHM server including disk usage, bandwidth, accounts, and system information.', 'whmin'); ?>
-                    </p>
-                    <button id="manual-server-refresh-btn" class="btn btn-primary w-100">
-                        <i class="mdi mdi-server-network me-2"></i>
-                        <?php _e('Refresh Server Data', 'whmin'); ?>
-                    </button>
-                    <div class="mt-2 text-center small text-muted">
-                        <?php _e('Updates dashboard charts and statistics', 'whmin'); ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Next Scheduled Check Info -->
-        <div class="alert alert-info mt-3 mb-0">
-            <i class="mdi mdi-information-outline me-2"></i>
-            <strong><?php _e('Next Automatic Check:', 'whmin'); ?></strong>
-            <?php echo whmin_get_next_cron_time(); ?>
-        </div>
-    </div>
-</div>
 
-<!-- Future Settings Placeholder -->
-<div class="card whmin-card shadow-lg border-0 mt-4">
-    <div class="card-body p-4">
-        <h4 class="card-title mb-3">
-            <i class="mdi mdi-cog-outline text-primary me-2"></i>
-            <?php _e('Advanced Settings', 'whmin'); ?>
-        </h4>
-        <p class="text-muted">
-            <?php _e('Additional private configuration options will appear here in future updates.', 'whmin'); ?>
-        </p>
+            <!-- Website status HTTP timeout -->
+            <div class="mb-0">
+                <label for="whmin_site_status_timeout" class="form-label">
+                    <?php _e('Website Status Timeout (per site, in seconds)', 'whmin'); ?>
+                </label>
+                <input
+                    type="number"
+                    min="1"
+                    max="60"
+                    step="1"
+                    class="form-control"
+                    id="whmin_site_status_timeout"
+                    name="whmin_private_settings[site_status_timeout]"
+                    value="<?php echo esc_attr($site_timeout); ?>"
+                >
+                <div class="form-text">
+                    <?php _e('Maximum time to wait for each website when checking status. Lower values make pages fail fast if a site is very slow.', 'whmin'); ?>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
+
+    <div class="whmin-save-button-container">
+        <?php submit_button(); ?>
+    </div>
+</form>

@@ -9,9 +9,10 @@ if (!defined('ABSPATH')) exit;
  * Clear all cached server data
  */
 function whmin_clear_server_data_cache() {
-    delete_transient('whmin_server_data_cache');
-    delete_transient('whmin_account_summary_cache');
-    delete_transient('whmin_system_info_cache');
+    delete_transient( 'whmin_server_data_cache' );
+    delete_transient( 'whmin_account_summary_cache' );
+    delete_transient( 'whmin_system_info_cache' );
+    delete_transient( 'whmin_whm_accounts_cache' ); // NEW: clear cached listaccts data
 }
 
 /**
@@ -503,22 +504,60 @@ function whmin_get_disk_usage_info() {
 
 /**
  * Main function to fetch all private dashboard data.
+ * Uses public dashboard data + cached detailed server data for performance.
+ *
  * @return array
  */
 function whmin_get_private_dashboard_data() {
-    // Get base public data
+    // Get base public data (uses latest_statuses + history)
     $public_data = whmin_get_public_dashboard_data();
-    
-    // Add comprehensive server details
-    $public_data['server_details'] = [
-        'account_summary' => whmin_get_account_summary(),
-        'system_info' => whmin_get_basic_system_info(),
-        'disk_usage' => whmin_get_disk_usage_info(),
-        'mysql_info' => whmin_get_mysql_info(),
-        'ssl_info' => whmin_get_ssl_info(),
-        'apache_status' => whmin_get_apache_status(),
-    ];
-    
+
+    // Cache key for all detailed server data
+    $cache_key = 'whmin_server_data_cache';
+
+    // Read server data cache TTL (in minutes) from private settings
+    $settings = function_exists('whmin_get_private_settings')
+        ? whmin_get_private_settings()
+        : array();
+
+    $minutes = isset($settings['server_data_cache_minutes'])
+        ? (int) $settings['server_data_cache_minutes']
+        : 5;
+
+    if ($minutes < 1) {
+        $minutes = 1;
+    }
+
+    $default_ttl = $minutes * MINUTE_IN_SECONDS;
+
+    /**
+     * Filter: override server data cache TTL (in seconds).
+     * Example:
+     * add_filter( 'whmin_server_data_cache_ttl', function( $ttl ) { return 600; } );
+     */
+    $cache_ttl = apply_filters('whmin_server_data_cache_ttl', $default_ttl);
+
+    // Try to get cached details
+    $server_details = get_transient($cache_key);
+
+    if (false === $server_details || !is_array($server_details)) {
+        // No cache or invalid cache: fetch fresh data from WHM API
+        $server_details = array(
+            'account_summary' => whmin_get_account_summary(),
+            'system_info'     => whmin_get_basic_system_info(),
+            'disk_usage'      => whmin_get_disk_usage_info(),
+            'mysql_info'      => whmin_get_mysql_info(),
+            'ssl_info'        => whmin_get_ssl_info(),
+            'apache_status'   => whmin_get_apache_status(),
+        );
+
+        // Store processed server details in a transient
+        set_transient($cache_key, $server_details, $cache_ttl);
+    }
+
+    // Attach server details to the main data array
+    $public_data['server_details'] = $server_details;
+
     return $public_data;
 }
 

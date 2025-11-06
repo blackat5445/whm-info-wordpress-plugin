@@ -13,10 +13,27 @@
          * Initialize private dashboard features
          */
         init: function() {
+            this.initSkeletons();
             this.initProgressBars();
             this.initCounterAnimations();
             this.initPrivateCharts();
             this.initServiceBadges();
+        },
+
+        /**
+         * Handle skeleton loader for the private dashboard
+         * - The template adds "whmin-loading" to the main wrapper
+         * - Once JS initialises, we remove it so real content appears
+         */
+        initSkeletons: function() {
+            var $page = $('.whmin-private-dashboard-page');
+            if (!$page.length) return;
+
+            // Small delay so skeleton is visible briefly on fast loads,
+            // but disappears quickly once everything is ready.
+            setTimeout(function() {
+                $page.removeClass('whmin-loading');
+            }, 300);
         },
 
         /**

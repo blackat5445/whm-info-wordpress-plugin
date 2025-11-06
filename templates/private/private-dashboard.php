@@ -63,9 +63,63 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
     align-items: center;
     gap: .5rem;
 }
+
+/* ===== Skeleton loading styles ===== */
+.whmin-loading .whmin-skeleton-container {
+    display: block;
+}
+.whmin-skeleton-container {
+    display: none;
+}
+.whmin-loading .whmin-skeleton-hide-while-loading {
+    display: none;
+}
+
+.whmin-skeleton-row {
+    display: grid;
+    grid-template-columns: 2fr 2fr 1.5fr 1fr 1.5fr;
+    gap: .75rem;
+    margin-bottom: .75rem;
+}
+
+.whmin-skeleton-block {
+    position: relative;
+    overflow: hidden;
+    border-radius: 9999px;
+    background: #e5e7eb;
+    height: 12px;
+}
+
+.whmin-skeleton-block--wide {
+    height: 16px;
+    border-radius: 8px;
+}
+
+@keyframes whmin-skeleton-shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.whmin-skeleton-block::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+        90deg,
+        rgba(229, 231, 235, 0) 0%,
+        rgba(209, 213, 219, 0.6) 50%,
+        rgba(229, 231, 235, 0) 100%
+    );
+    animation: whmin-skeleton-shimmer 1.2s ease-in-out infinite;
+}
 </style>
 
-<div class="whmin-public-status-page whmin-private-dashboard-page"> 
+<div class="whmin-public-status-page whmin-private-dashboard-page whmin-loading">
     <header class="whmin-header">
         <img src="<?php echo esc_url($logo_url); ?>" alt="Logo" class="whmin-logo">
         <div class="whmin-overall-status whmin-status-<?php echo esc_attr($server_status); ?>">
@@ -527,48 +581,64 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
                 </div>
             </div>
             <div class="whmin-card-body whmin-table-container">
-                <table class="whmin-status-table">
-                    <thead>
-                        <tr>
-                            <th><?php _e('Website Name', 'whmin'); ?></th>
-                            <th><?php _e('URL', 'whmin'); ?></th>
-                            <th><?php _e('Status', 'whmin'); ?></th>
-                            <th><?php _e('Response Time', 'whmin'); ?></th>
-                            <th><?php _e('Last Checked', 'whmin'); ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($direct_status as $site): ?>
-                        <tr class="whmin-status-row whmin-status-<?php echo esc_attr($site['status']); ?>">
-                            <td class="whmin-site-name" data-label="<?php _e('Website', 'whmin'); ?>">
-                                <strong><?php echo esc_html($site['name']); ?></strong>
-                                <span class="whmin-site-user"><?php echo esc_html($site['user']); ?></span>
-                            </td>
-                            <td class="whmin-site-url" data-label="<?php _e('URL', 'whmin'); ?>">
-                                <a href="<?php echo esc_url($site['url']); ?>" target="_blank" rel="noopener">
-                                    <?php echo esc_html(parse_url($site['url'], PHP_URL_HOST)); ?>
-                                    <i class="mdi mdi-open-in-new"></i>
-                                </a>
-                            </td>
-                            <td class="whmin-site-status" data-label="<?php _e('Status', 'whmin'); ?>">
-                                <?php echo whmin_get_status_badge_html($site['status'], $site['status_code']); ?>
-                            </td>
-                            <td class="whmin-site-response" data-label="<?php _e('Response', 'whmin'); ?>">
-                                <?php echo whmin_format_response_time($site['response_time']); ?>
-                            </td>
-                            <td class="whmin-site-lastcheck" data-label="<?php _e('Last Check', 'whmin'); ?>">
-                                <?php 
-                                if ($site['last_check'] > 0) {
-                                    echo esc_html(human_time_diff($site['last_check'], current_time('timestamp'))) . ' ' . __('ago', 'whmin');
-                                } else {
-                                    echo '—';
-                                }
-                                ?>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                <!-- Skeleton while loading -->
+                <div class="whmin-skeleton-container">
+                    <?php for ($i = 0; $i < 4; $i++): ?>
+                        <div class="whmin-skeleton-row">
+                            <div class="whmin-skeleton-block whmin-skeleton-block--wide"></div>
+                            <div class="whmin-skeleton-block whmin-skeleton-block--wide"></div>
+                            <div class="whmin-skeleton-block"></div>
+                            <div class="whmin-skeleton-block"></div>
+                            <div class="whmin-skeleton-block"></div>
+                        </div>
+                    <?php endfor; ?>
+                </div>
+
+                <!-- Real table, hidden while whmin-loading is present -->
+                <div class="whmin-skeleton-hide-while-loading">
+                    <table class="whmin-status-table">
+                        <thead>
+                            <tr>
+                                <th><?php _e('Website Name', 'whmin'); ?></th>
+                                <th><?php _e('URL', 'whmin'); ?></th>
+                                <th><?php _e('Status', 'whmin'); ?></th>
+                                <th><?php _e('Response Time', 'whmin'); ?></th>
+                                <th><?php _e('Last Checked', 'whmin'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($direct_status as $site): ?>
+                            <tr class="whmin-status-row whmin-status-<?php echo esc_attr($site['status']); ?>">
+                                <td class="whmin-site-name" data-label="<?php _e('Website', 'whmin'); ?>">
+                                    <strong><?php echo esc_html($site['name']); ?></strong>
+                                    <span class="whmin-site-user"><?php echo esc_html($site['user']); ?></span>
+                                </td>
+                                <td class="whmin-site-url" data-label="<?php _e('URL', 'whmin'); ?>">
+                                    <a href="<?php echo esc_url($site['url']); ?>" target="_blank" rel="noopener">
+                                        <?php echo esc_html(parse_url($site['url'], PHP_URL_HOST)); ?>
+                                        <i class="mdi mdi-open-in-new"></i>
+                                    </a>
+                                </td>
+                                <td class="whmin-site-status" data-label="<?php _e('Status', 'whmin'); ?>">
+                                    <?php echo whmin_get_status_badge_html($site['status'], $site['status_code']); ?>
+                                </td>
+                                <td class="whmin-site-response" data-label="<?php _e('Response', 'whmin'); ?>">
+                                    <?php echo whmin_format_response_time($site['response_time']); ?>
+                                </td>
+                                <td class="whmin-site-lastcheck" data-label="<?php _e('Last Check', 'whmin'); ?>">
+                                    <?php 
+                                    if ($site['last_check'] > 0) {
+                                        echo esc_html(human_time_diff($site['last_check'], current_time('timestamp'))) . ' ' . __('ago', 'whmin');
+                                    } else {
+                                        echo '—';
+                                    }
+                                    ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
         <?php endif; ?>
@@ -594,51 +664,67 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
                 </div>
             </div>
             <div class="whmin-card-body whmin-table-container">
-                <table class="whmin-status-table">
-                    <thead>
-                        <tr>
-                            <th><?php _e('Website Name', 'whmin'); ?></th>
-                            <th><?php _e('URL', 'whmin'); ?></th>
-                            <th><?php _e('Hosting Provider', 'whmin'); ?></th>
-                            <th><?php _e('Status', 'whmin'); ?></th>
-                            <th><?php _e('Response Time', 'whmin'); ?></th>
-                            <th><?php _e('Last Checked', 'whmin'); ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($indirect_status as $site): ?>
-                        <tr class="whmin-status-row whmin-status-<?php echo esc_attr($site['status']); ?>">
-                            <td class="whmin-site-name">
-                                <strong><?php echo esc_html($site['name']); ?></strong>
-                            </td>
-                            <td class="whmin-site-url">
-                                <a href="<?php echo esc_url($site['url']); ?>" target="_blank" rel="noopener">
-                                    <?php echo esc_html(parse_url($site['url'], PHP_URL_HOST)); ?>
-                                    <i class="mdi mdi-open-in-new"></i>
-                                </a>
-                            </td>
-                            <td class="whmin-site-hosting">
-                                <?php echo esc_html($site['hosting']); ?>
-                            </td>
-                            <td class="whmin-site-status">
-                                <?php echo whmin_get_status_badge_html($site['status'], $site['status_code']); ?>
-                            </td>
-                            <td class="whmin-site-response">
-                                <?php echo whmin_format_response_time($site['response_time']); ?>
-                            </td>
-                            <td class="whmin-site-lastcheck">
-                                <?php 
-                                if ($site['last_check'] > 0) {
-                                    echo esc_html(human_time_diff($site['last_check'], current_time('timestamp'))) . ' ' . __('ago', 'whmin');
-                                } else {
-                                    echo '—';
-                                }
-                                ?>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                <!-- Skeleton while loading -->
+                <div class="whmin-skeleton-container">
+                    <?php for ($i = 0; $i < 4; $i++): ?>
+                        <div class="whmin-skeleton-row">
+                            <div class="whmin-skeleton-block whmin-skeleton-block--wide"></div>
+                            <div class="whmin-skeleton-block whmin-skeleton-block--wide"></div>
+                            <div class="whmin-skeleton-block"></div>
+                            <div class="whmin-skeleton-block"></div>
+                            <div class="whmin-skeleton-block"></div>
+                        </div>
+                    <?php endfor; ?>
+                </div>
+
+                <!-- Real table, hidden while whmin-loading is present -->
+                <div class="whmin-skeleton-hide-while-loading">
+                    <table class="whmin-status-table">
+                        <thead>
+                            <tr>
+                                <th><?php _e('Website Name', 'whmin'); ?></th>
+                                <th><?php _e('URL', 'whmin'); ?></th>
+                                <th><?php _e('Hosting Provider', 'whmin'); ?></th>
+                                <th><?php _e('Status', 'whmin'); ?></th>
+                                <th><?php _e('Response Time', 'whmin'); ?></th>
+                                <th><?php _e('Last Checked', 'whmin'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($indirect_status as $site): ?>
+                            <tr class="whmin-status-row whmin-status-<?php echo esc_attr($site['status']); ?>">
+                                <td class="whmin-site-name">
+                                    <strong><?php echo esc_html($site['name']); ?></strong>
+                                </td>
+                                <td class="whmin-site-url">
+                                    <a href="<?php echo esc_url($site['url']); ?>" target="_blank" rel="noopener">
+                                        <?php echo esc_html(parse_url($site['url'], PHP_URL_HOST)); ?>
+                                        <i class="mdi mdi-open-in-new"></i>
+                                    </a>
+                                </td>
+                                <td class="whmin-site-hosting">
+                                    <?php echo esc_html($site['hosting']); ?>
+                                </td>
+                                <td class="whmin-site-status">
+                                    <?php echo whmin_get_status_badge_html($site['status'], $site['status_code']); ?>
+                                </td>
+                                <td class="whmin-site-response">
+                                    <?php echo whmin_format_response_time($site['response_time']); ?>
+                                </td>
+                                <td class="whmin-site-lastcheck">
+                                    <?php 
+                                    if ($site['last_check'] > 0) {
+                                        echo esc_html(human_time_diff($site['last_check'], current_time('timestamp'))) . ' ' . __('ago', 'whmin');
+                                    } else {
+                                        echo '—';
+                                    }
+                                    ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
         <?php endif; ?>

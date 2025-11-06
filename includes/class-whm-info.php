@@ -52,6 +52,8 @@ class WHMIN {
         require_once WHMIN_PLUGIN_DIR . 'includes/functions/private-sites-status.php';
         require_once WHMIN_PLUGIN_DIR . 'includes/functions/sites-status.php';
         require_once WHMIN_PLUGIN_DIR . 'includes/functions/email.php'; 
+        require_once WHMIN_PLUGIN_DIR . 'includes/functions/maintenance-news.php'; 
+
 
         // Utilities
         require_once WHMIN_PLUGIN_DIR . 'includes/util/uninstall-confirm.php';
@@ -66,6 +68,8 @@ class WHMIN {
         add_action('wp', array($this, 'check_for_shortcodes')); // Renamed for clarity
         add_action('wp_head', array($this, 'add_custom_favicon'));
         add_action('admin_head', array($this, 'add_custom_admin_menu_icon_style'));
+        add_action('wp_ajax_whmin_load_more_news', 'whmin_ajax_load_more_news');
+        add_action('wp_ajax_nopriv_whmin_load_more_news', 'whmin_ajax_load_more_news');
 
     }
 
@@ -133,9 +137,13 @@ class WHMIN {
             // Pass data (needed by both)
             $history_log = get_option('whmin_status_history_log', []);
             $public_settings = whmin_get_public_settings();
+            
+            // UPDATED: Added localization for AJAX (Load More News)
             wp_localize_script('whmin-public-js', 'WHMIN_Public_Data', [
                 'history' => $history_log,
-                'settings' => $public_settings
+                'settings' => $public_settings,
+                'ajaxurl'  => admin_url('admin-ajax.php'), // Crucial for AJAX calls
+                'nonce'    => wp_create_nonce('whmin_public_nonce') // Nonce for the news AJAX handler
             ]);
 
             // --- NEW: Enqueue private assets ONLY if the private shortcode is found ---

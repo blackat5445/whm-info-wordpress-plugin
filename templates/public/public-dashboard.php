@@ -134,17 +134,7 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
 
         <!-- Maintenance News Section (Conditionally Rendered) -->
         <?php if ($settings['enable_maintenance_news']): ?>
-        <div class="whmin-card whmin-maintenance-news">
-             <div class="whmin-card-header">
-                <h3><?php _e('Maintenance & News', 'whmin'); ?></h3>
-            </div>
-            <div class="whmin-card-body">
-                <div class="whmin-no-news">
-                    <i class="mdi mdi-information-outline"></i>
-                    <p><?php _e('No recent news or scheduled maintenance to report.', 'whmin'); ?></p>
-                </div>
-            </div>
-        </div>
+            <?php whmin_render_maintenance_news_section(); ?>
         <?php endif; ?>
     </main>
 

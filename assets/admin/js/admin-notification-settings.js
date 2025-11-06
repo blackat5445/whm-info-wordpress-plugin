@@ -29,6 +29,8 @@
         $table.on('click', '.remove-recipient-btn', handleRemoveClick);
         $('#recipient-search-input').on('keyup', debounce(handleSearch, 300));
         $('#recipients-table .sortable-header').on('click', handleSortClick);
+        $('#whmin-send-test-notification').on('click', handleSendTestNotification);
+
         // Note: The notification settings page doesn't have a "load more" button in the provided HTML.
         // If you were to add one, its handler would go here.
     });
@@ -38,6 +40,11 @@
      */
     function showAddOrEditModal(recipientData = null) {
         const isEdit = recipientData !== null;
+    
+        const emailEnabled    = isEdit ? !!recipientData.notify_email : true;
+        const telegramEnabled = isEdit ? !!recipientData.notify_telegram : false;
+        const telegramChat    = isEdit && recipientData.telegram_chat ? recipientData.telegram_chat : '';
+    
         Swal.fire({
             title: isEdit ? 'Modify Recipient' : 'Add New Recipient',
             width: '550px',
@@ -62,10 +69,30 @@
                         <label for="swal-telephone">Telephone (Optional)</label>
                         <input id="swal-telephone" type="tel" class="swal2-input" placeholder="+1 (555) 123-4567" value="${isEdit ? recipientData.telephone : ''}">
                     </div>
+                    <hr class="my-3" />
+                    <div class="swal2-input-group">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="swal-notify-email" ${emailEnabled ? 'checked' : ''}>
+                            <label class="form-check-label" for="swal-notify-email">Receive email notifications</label>
+                        </div>
+                        <div class="form-check mt-2">
+                            <input type="checkbox" class="form-check-input" id="swal-notify-telegram" ${telegramEnabled ? 'checked' : ''}>
+                            <label class="form-check-label" for="swal-notify-telegram">Receive Telegram notifications</label>
+                        </div>
+                    </div>
+                    <div class="swal2-input-group">
+                        <label for="swal-telegram-chat">Telegram chat ID / @username (optional)</label>
+                        <input id="swal-telegram-chat" class="swal2-input" placeholder="@yourname or chat ID" value="${telegramChat}">
+                    </div>
                 </div>`,
             preConfirm: () => {
-                const name = document.getElementById('swal-name').value;
-                const email = document.getElementById('swal-email').value;
+                const name     = document.getElementById('swal-name').value;
+                const email    = document.getElementById('swal-email').value;
+                const tel      = document.getElementById('swal-telephone').value;
+                const notifyEmail    = document.getElementById('swal-notify-email').checked ? 1 : 0;
+                const notifyTelegram = document.getElementById('swal-notify-telegram').checked ? 1 : 0;
+                const telegramChatId = document.getElementById('swal-telegram-chat').value;
+    
                 if (!name || !email) {
                     Swal.showValidationMessage('Name and Email are required');
                     return false;
@@ -78,7 +105,10 @@
                     uid: document.getElementById('swal-uid').value,
                     name: name,
                     email: email,
-                    telephone: document.getElementById('swal-telephone').value
+                    telephone: tel,
+                    notify_email: notifyEmail,
+                    notify_telegram: notifyTelegram,
+                    telegram_chat: telegramChatId
                 };
             },
             showCancelButton: true,
@@ -138,6 +168,47 @@
                     }
                 }).fail(() => Swal.fire('Error!', 'An unknown error occurred.', 'error'));
             }
+        });
+    }
+
+    function handleSendTestNotification(e) {
+        e.preventDefault();
+
+        Swal.fire({
+            title: 'Send test notification?',
+            text: 'A test notification will be sent to all recipients who have Email and/or Telegram enabled.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Send now',
+            cancelButtonText: 'Cancel',
+            customClass: {
+                confirmButton: 'btn btn-primary',
+                cancelButton: 'btn btn-outline-secondary ms-2'
+            },
+            buttonsStyling: false
+        }).then((result) => {
+            if (!result.isConfirmed) {
+                return;
+            }
+
+            Swal.showLoading();
+
+            $.post(WHMIN_Admin.ajaxurl, {
+                action: 'whmin_send_test_notification',
+                nonce: WHMIN_Admin.nonce
+            }).done(response => {
+                Swal.close();
+
+                if (response.success) {
+                    toastr.success(response.data.message || 'Test notification sent.');
+                } else {
+                    const msg = response.data && response.data.message ? response.data.message : 'An error occurred while sending test notifications.';
+                    Swal.fire('Error', msg, 'error');
+                }
+            }).fail(() => {
+                Swal.close();
+                Swal.fire('Error', 'An unknown error occurred while sending test notifications.', 'error');
+            });
         });
     }
 

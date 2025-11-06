@@ -51,6 +51,7 @@ class WHMIN {
         require_once WHMIN_PLUGIN_DIR . 'includes/functions/server-status.php';
         require_once WHMIN_PLUGIN_DIR . 'includes/functions/private-sites-status.php';
         require_once WHMIN_PLUGIN_DIR . 'includes/functions/sites-status.php';
+        require_once WHMIN_PLUGIN_DIR . 'includes/functions/email.php'; 
 
         // Utilities
         require_once WHMIN_PLUGIN_DIR . 'includes/util/uninstall-confirm.php';

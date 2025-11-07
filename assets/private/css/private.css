@@ -4,10 +4,94 @@
  * Uses existing color scheme from public CSS
  */
 
-/* ===========================
+/* =======================================
+   Base & Utility
+   ======================================= */
+
+/* Gray highlight for deactivated rows (From Inline) */
+.whmin-status-row.whmin-status-deactivated {
+    background: #f3f4f6;
+    color: #6b7280;
+    opacity: .95;
+}
+.whmin-status-row.whmin-status-deactivated a { color: inherit; opacity: .9; }
+
+/* unit toggle (From Inline) */
+.whmin-unit-toggle {
+    display: flex;
+    gap: .5rem;
+    font-size: .7rem;
+    margin-left: auto;
+    align-items: center;
+}
+.whmin-unit-toggle span {
+    cursor: pointer;
+    color: #6b7280;
+    padding: 2px 6px;
+    border-radius: 9999px;
+    transition: background .15s ease, color .15s ease;
+}
+.whmin-unit-toggle span.active {
+    background: #075b63;
+    color: #fff;
+}
+
+/* make header flex row (From Inline) */
+.whmin-card.whmin-resource-card .whmin-card-header {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+/* ===== Skeleton loading styles (From Inline) ===== */
+.whmin-loading .whmin-skeleton-container { display: block; }
+.whmin-skeleton-container { display: none; }
+.whmin-loading .whmin-skeleton-hide-while-loading { display: none; }
+
+.whmin-skeleton-row {
+    display: grid;
+    grid-template-columns: 2fr 2fr 1.5fr 1fr 1.5fr;
+    gap: .75rem;
+    margin-bottom: .75rem;
+}
+
+.whmin-skeleton-block {
+    position: relative;
+    overflow: hidden;
+    border-radius: 9999px;
+    background: #e5e7eb;
+    height: 12px;
+}
+
+.whmin-skeleton-block--wide {
+    height: 16px;
+    border-radius: 8px;
+}
+
+@keyframes whmin-skeleton-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.whmin-skeleton-block::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+        90deg,
+        rgba(229, 231, 235, 0) 0%,
+        rgba(209, 213, 219, 0.6) 50%,
+        rgba(229, 231, 235, 0) 100%
+    );
+    animation: whmin-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+
+/* =======================================
    Stats Grid (for Account Overview)
-   =========================== */
-   .whmin-stats-grid {
+   ======================================= */
+.whmin-stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 1.5rem;
@@ -31,9 +115,45 @@
     font-weight: 500;
 }
 
-/* ===========================
+.whmin-stats-grid--icons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+}
+.whmin-stat-item--stacked {
+    text-align: center;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,.04);
+    border-radius: 14px;
+    padding: 1rem .75rem 1.1rem;
+    box-shadow: 0 3px 15px rgba(15,23,42,.05);
+}
+.whmin-stat-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 9999px;
+    background: rgba(7,91,99,.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto .45rem;
+    color: #075b63;
+    font-size: 20px;
+}
+.whmin-stat-title {
+    font-size: .78rem;
+    opacity: .85;
+    margin-bottom: .2rem;
+}
+.whmin-stat-value {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+/* =======================================
    Services Status
-   =========================== */
+   ======================================= */
 .whmin-services-summary {
     display: flex;
     gap: 2rem;
@@ -120,9 +240,9 @@
     color: #842029;
 }
 
-/* ===========================
+/* =======================================
    Resource Usage Cards
-   =========================== */
+   ======================================= */
 .whmin-resource-card .whmin-card-body {
     padding: 1.5rem;
 }
@@ -168,9 +288,9 @@
     border-radius: 8px;
 }
 
-/* ===========================
+/* =======================================
    Progress Bars
-   =========================== */
+   ======================================= */
 .whmin-progress-bar {
     width: 100%;
     height: 16px;
@@ -230,9 +350,9 @@
     background: linear-gradient(90deg, #dc3545, #b02a37);
 }
 
-/* ===========================
+/* =======================================
    Top Users Lists
-   =========================== */
+   ======================================= */
 .whmin-top-users {
     margin-top: 1.5rem;
     padding-top: 1.5rem;
@@ -281,9 +401,9 @@
     font-size: 0.875rem;
 }
 
-/* ===========================
+/* =======================================
    Detail Cards
-   =========================== */
+   ======================================= */
 .whmin-overview-grid,
 .whmin-details-grid {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -365,9 +485,9 @@
     color: #41464b;
 }
 
-/* ===========================
+/* =======================================
    Hosted Accounts Display (replaces Resources Summary)
-   =========================== */
+   ======================================= */
 .whmin-hosted-accounts-display {
     text-align: center;
     padding: 2rem 1rem;
@@ -387,9 +507,9 @@
     margin: 0;
 }
 
-/* ===========================
+/* =======================================
    Package Distribution
-   =========================== */
+   ======================================= */
 .whmin-packages-grid {
     display: grid;
     grid-template-columns: 1fr 1.5fr;
@@ -449,9 +569,9 @@
     border-radius: 6px;
 }
 
-/* ===========================
-   Status Tables
-   =========================== */
+/* =======================================
+   Status Tables - ULTIMATE MODERN STYLES (NEW)
+   ======================================= */
 .whmin-status-table-card {
     margin-bottom: 2rem;
 }
@@ -483,27 +603,29 @@
 .whmin-status-pill {
     display: inline-flex;
     align-items: center;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
+    padding: 0.35rem 1rem; 
+    border-radius: 9999px; 
     font-size: 0.8125rem;
-    font-weight: 600;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .whmin-status-pill.whmin-pill-success {
-    background: #d1e7dd;
-    color: #0f5132;
+    background: #198754; 
+    color: #ffffff;
 }
 
 .whmin-status-pill.whmin-pill-warning {
-    background: #fff3cd;
-    color: #664d03;
+    background: #ffc107; 
+    color: #343a40;
 }
 
 .whmin-status-pill.whmin-pill-danger {
-    background: #f8d7da;
-    color: #842029;
+    background: #dc3545; 
+    color: #ffffff;
 }
 
+/* Table Container - Remove inner padding/border to let the table style itself */
 .whmin-table-container {
     padding: 0;
     overflow-x: auto;
@@ -511,30 +633,48 @@
 
 .whmin-status-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate; 
+    border-spacing: 0;
     font-size: 0.875rem;
+    border-radius: 12px; 
+    overflow: hidden; 
+    box-shadow: 0 8px 30px rgba(0,0,0,0.08); /* Stronger, modern shadow */
 }
 
+/* Table Header */
 .whmin-status-table thead {
-    background: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
+    background: #075b63; /* Use primary brand color for the entire header */
+    border-bottom: none;
 }
 
 .whmin-status-table th {
-    padding: 1rem;
+    padding: 1.2rem 1.2rem; /* More padding */
     text-align: left;
-    font-weight: 600;
-    color: #495057;
+    font-weight: 700; 
+    color: #ffffff; /* White text on brand color */
     white-space: nowrap;
+    border-bottom: none; 
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
 }
 
+.whmin-status-table thead th:first-child { border-top-left-radius: 12px; }
+.whmin-status-table thead th:last-child { border-top-right-radius: 12px; }
+
+
+/* Table Body Rows */
 .whmin-status-table tbody tr {
-    border-bottom: 1px solid #e9ecef;
-    transition: background 0.2s ease;
+    background: #ffffff; /* Pure white background */
+    border-bottom: 1px solid #f1f3f5;
+    transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
 }
 
 .whmin-status-table tbody tr:hover {
-    background: #f8f9fa;
+    background: #ffffff; 
+    transform: translateY(-2px); /* Lift effect */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05); /* Soft shadow on hover */
+    border-color: #dee2e6;
 }
 
 .whmin-status-table tbody tr:last-child {
@@ -542,132 +682,104 @@
 }
 
 .whmin-status-table td {
-    padding: 1rem;
+    padding: 1.2rem; /* Match header padding */
     vertical-align: middle;
 }
 
-/* Status-specific row highlighting */
-.whmin-status-row.whmin-status-down {
-    background: rgba(220, 53, 69, 0.05);
-}
+/* Status-specific row highlighting - use a thin border/shadow instead of background */
+.whmin-status-row.whmin-status-down { border-left: 4px solid #dc3545; }
+.whmin-status-row.whmin-status-degraded { border-left: 4px solid #ffc107; }
+.whmin-status-row.whmin-status-operational { border-left: 4px solid #198754; }
 
-.whmin-status-row.whmin-status-degraded {
-    background: rgba(255, 193, 7, 0.05);
-}
 
-/* Site Name Column */
+/* Site Name Column - Primary Data */
 .whmin-site-name strong {
     display: block;
-    color: #212529;
-    font-weight: 600;
-    margin-bottom: 0.25rem;
+    color: #111827; 
+    font-weight: 700;
+    font-size: 1rem; 
+    margin-bottom: 0.2rem;
 }
 
 .whmin-site-user {
     display: block;
     font-size: 0.75rem;
-    color: #6c757d;
-    font-family: 'Courier New', monospace;
-}
-
-/* URL Column */
-.whmin-site-url a {
-    color: #075b63;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
+    color: #6c757d; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
     font-weight: 500;
 }
 
+/* URL Column - Link Style */
+.whmin-site-url a {
+    color: #075b63;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
 .whmin-site-url a:hover {
-    text-decoration: underline;
+    text-decoration: none; 
+    color: #044348;
 }
 
 .whmin-site-url a i {
-    font-size: 0.875rem;
-    opacity: 0.6;
+    font-size: 0.8125rem;
+    opacity: 0.8;
 }
 
-/* Status Badge in Table */
+/* Status Badge in Table - Enhanced Pop */
 .whmin-status-badge-table {
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
-    padding: 0.375rem 0.75rem;
-    border-radius: 6px;
-    font-size: 0.8125rem;
-    font-weight: 600;
+    padding: 0.35rem 0.8rem;
+    border-radius: 9999px; 
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
     white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .whmin-status-badge-table i {
     font-size: 1rem;
 }
+/* Color classes defined below (no need to redefine here) */
 
-.whmin-badge-success {
-    background: #d1e7dd;
-    color: #0f5132;
-}
-
-.whmin-badge-warning {
-    background: #fff3cd;
-    color: #664d03;
-}
-
-.whmin-badge-danger {
-    background: #f8d7da;
-    color: #842029;
-}
-
-.whmin-badge-secondary {
-    background: #e2e3e5;
-    color: #41464b;
-}
 
 /* Response Time */
 .whmin-response-time {
     display: inline-block;
-    padding: 0.25rem 0.625rem;
-    border-radius: 4px;
-    font-weight: 600;
-    font-family: 'Courier New', monospace;
+    padding: 0.3rem 0.75rem; 
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.875rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-.whmin-response-fast {
-    background: #d1e7dd;
-    color: #0f5132;
-}
+.whmin-response-fast { background: #e6ffed; color: #0f5132; } 
+.whmin-response-medium { background: #fffde7; color: #664d03; } 
+.whmin-response-slow { background: #fff0f5; color: #842029; } 
+.whmin-response-unknown { color: #6c757d; }
 
-.whmin-response-medium {
-    background: #fff3cd;
-    color: #664d03;
-}
+/* Hosting Provider / Last Checked (Muted for hierarchy) */
+.whmin-site-hosting { color: #495057; font-weight: 500; }
+.whmin-site-lastcheck { color: #9ca3af; font-size: 0.75rem; }
 
-.whmin-response-slow {
-    background: #f8d7da;
-    color: #842029;
-}
 
-.whmin-response-unknown {
-    color: #6c757d;
-}
+/* =======================================
+   Badge/Pill Color Classes (Defined here for clarity)
+   ======================================= */
+.whmin-badge-success { background: #198754; color: #ffffff; }
+.whmin-badge-warning { background: #ffc107; color: #343a40; }
+.whmin-badge-danger { background: #dc3545; color: #ffffff; }
+.whmin-badge-secondary { background: #e2e3e5; color: #41464b; }
 
-/* Hosting Provider */
-.whmin-site-hosting {
-    color: #495057;
-    font-weight: 500;
-}
 
-/* Last Checked */
-.whmin-site-lastcheck {
-    color: #6c757d;
-    font-size: 0.8125rem;
-}
-
-/* ===========================
-   Error Messages
-   =========================== */
+/* =======================================
+   Error Messages (UNCHANGED)
+   ======================================= */
 .whmin-error {
     color: #dc3545;
     font-size: 0.875rem;
@@ -678,152 +790,140 @@
     margin: 0;
 }
 
-/* ===========================
-   Responsive Design
-   =========================== */
+/* =======================================
+   Responsive Design (UPDATED MOBILE TABLE STACK)
+   ======================================= */
 @media (max-width: 768px) {
     .whmin-overview-grid,
-    .whmin-details-grid {
-        grid-template-columns: 1fr;
+    .whmin-details-grid { grid-template-columns: 1fr; }
+    .whmin-stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .whmin-services-list { grid-template-columns: 1fr; }
+    .whmin-packages-grid { grid-template-columns: 1fr; }
+    .whmin-packages-chart { max-width: 250px; }
+    .whmin-resource-summary { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .whmin-resource-percentage { align-self: flex-end; }
+}
+
+@media (max-width: 640px) {
+    /* Mobile Table Stack */
+    .whmin-status-table { border-radius: 0; box-shadow: none; }
+    .whmin-status-table thead { display: none; }
+    .whmin-status-table tbody tr {
+        display: block;
+        margin-bottom: 1.5rem;
+        border-radius: 10px; /* Nicer mobile card corners */
+        border: 1px solid #e9ecef;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05); /* Nicer mobile card shadow */
+        padding: 1rem;
+        background: #fff;
+    }
+
+    .whmin-status-table td {
+        display: flex; 
+        justify-content: space-between;
+        align-items: center;
+        text-align: right;
+        padding: 0.35rem 0;
+        border: none;
+        position: relative;
+    }
+
+    .whmin-status-table td::before {
+        content: attr(data-label);
+        position: static;
+        font-weight: 600;
+        color: #6c757d;
     }
     
-    .whmin-stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .whmin-services-list {
-        grid-template-columns: 1fr;
-    }
-    
-    .whmin-packages-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .whmin-packages-chart {
-        max-width: 250px;
-    }
-    
-    .whmin-resource-summary {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-    
-    .whmin-resource-percentage {
-        align-self: flex-end;
-    }
+    .whmin-status-table tbody tr:hover { transform: none; }
+
+    /* Adjust specific data alignment */
+    .whmin-site-name { text-align: left; }
+    .whmin-site-url a { justify-content: flex-end; }
+    .whmin-site-name strong { text-align: left; }
+    .whmin-site-name td::before { content: none; } /* Hide 'Website' label, name is obvious */
 }
 
 @media (max-width: 480px) {
-    .whmin-stat-value {
-        font-size: 1.5rem;
-    }
-    
-    .whmin-service-count {
-        font-size: 2rem;
-    }
-    
-    .whmin-resource-used {
-        font-size: 1.5rem;
-    }
-    
-    .whmin-resource-percentage {
-        font-size: 1.25rem;
-        padding: 0.375rem 0.75rem;
-    }
-    
-    .whmin-stats-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .whmin-stat-big-inline {
-        font-size: 3rem;
-    }
+    .whmin-stat-value { font-size: 1.5rem; }
+    .whmin-service-count { font-size: 2rem; }
+    .whmin-resource-used { font-size: 1.5rem; }
+    .whmin-resource-percentage { font-size: 1.25rem; padding: 0.375rem 0.75rem; }
+    .whmin-stats-grid { grid-template-columns: 1fr; }
+    .whmin-stat-big-inline { font-size: 3rem; }
 }
 
-/* ===========================
-   Animations
-   =========================== */
+/* =======================================
+   Animations (UNCHANGED)
+   ======================================= */
 @keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.whmin-card {
-    animation: fadeInUp 0.6s ease-out;
-}
-
+.whmin-card { animation: fadeInUp 0.6s ease-out; }
 .whmin-card:nth-child(1) { animation-delay: 0.1s; }
 .whmin-card:nth-child(2) { animation-delay: 0.2s; }
 .whmin-card:nth-child(3) { animation-delay: 0.3s; }
 .whmin-card:nth-child(4) { animation-delay: 0.4s; }
 
-/* ===========================
-   Chart Container
-   =========================== */
-#systemLoadChart {
-    max-height: 200px;
-}
+/* =======================================
+   Chart Container (UNCHANGED)
+   ======================================= */
+#systemLoadChart { max-height: 200px; }
 
-/* ===========================
-   Print Styles
-   =========================== */
+/* =======================================
+   Print Styles (UNCHANGED)
+   ======================================= */
 @media print {
     .whmin-graph-controls,
     .whmin-header,
-    .whmin-footer {
-        display: none;
-    }
+    .whmin-footer { display: none; }
     
-    .whmin-card {
-        page-break-inside: avoid;
-        box-shadow: none;
-        border: 1px solid #dee2e6;
-    }
+    .whmin-card { page-break-inside: avoid; box-shadow: none; border: 1px solid #dee2e6; }
     
-    .whmin-progress-fill::after {
-        display: none;
-    }
+    .whmin-progress-fill::after { display: none; }
 }
 
-.whmin-stats-grid--icons {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 1rem;
-}
-.whmin-stat-item--stacked {
-    text-align: center;
-    background: #fff;
-    border: 1px solid rgba(0,0,0,.04);
-    border-radius: 14px;
-    padding: 1rem .75rem 1.1rem;
-    box-shadow: 0 3px 15px rgba(15,23,42,.05);
-}
-.whmin-stat-icon {
-    width: 46px;
-    height: 46px;
-    border-radius: 9999px;
-    background: rgba(7,91,99,.12);
-    display: flex;
+.whmin-status-pill {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    margin: 0 auto .45rem;
-    color: #075b63;
-    font-size: 20px;
+    gap: 0.4rem; /* Added gap for icon */
+    padding: 0.35rem 1rem; 
+    border-radius: 9999px; 
+    font-size: 0.8125rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
 }
-.whmin-stat-title {
-    font-size: .78rem;
-    opacity: .85;
-    margin-bottom: .2rem;
+
+/* New: Style for the ACTIVE/CONNECTED Link */
+.whmin-status-pill.whmin-pill-info {
+    background: #075b63; /* Brand color */
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(7, 91, 99, 0.3);
+    text-decoration: none;
 }
-.whmin-stat-value {
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: #111827;
+.whmin-status-pill.whmin-pill-info:hover {
+    background: #064c53;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 15px rgba(7, 91, 99, 0.4);
+}
+
+/* Updated: Muted/Not Connected/Disabled Link */
+.whmin-status-pill.whmin-pill-muted {
+    background: #e9ecef; /* Light gray */
+    color: #6c757d; /* Muted text */
+    box-shadow: none;
+    cursor: default;
+    text-decoration: none;
+}
+/* No hover effect for muted pill */
+
+
+.whmin-status-pill.whmin-pill-success {
+    background: #198754; 
+    color: #ffffff;
 }

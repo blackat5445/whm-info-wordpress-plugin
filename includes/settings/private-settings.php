@@ -16,6 +16,9 @@ function whmin_get_private_settings_defaults() {
 
         // Per-site HTTP timeout for site status checks (in seconds).
         'site_status_timeout'       => 8,
+
+        // NEW: sites metadata refresh interval (hours)
+        'site_meta_refresh_hours'     => 24,
     );
 }
 
@@ -81,6 +84,17 @@ function whmin_sanitize_private_settings($input) {
             $timeout = 60;
         }
         $output['site_status_timeout'] = $timeout;
+    }
+
+    // 4) Site meta refresh interval (direct+remote)
+    if (isset($input['site_meta_refresh_hours'])) {
+        $hours = (int) $input['site_meta_refresh_hours'];
+        if ($hours < 1) {
+            $hours = 1;
+        } elseif ($hours > 168) {
+            $hours = 168;
+        }
+        $output['site_meta_refresh_hours'] = $hours;
     }
 
     return $output;

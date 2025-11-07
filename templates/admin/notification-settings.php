@@ -73,15 +73,16 @@ $current_interval       = $notification_settings['interval'];
                                         <span class="badge bg-primary">
                                             <i class="mdi mdi-email-outline me-1"></i><?php _e('Email', 'whmin'); ?>
                                         </span>
-                                    <?php endif; ?>
-                                    <?php if (!empty($recipient['notify_telegram'])): ?>
-                                        <span class="badge bg-info text-dark ms-1">
-                                            <i class="mdi mdi-telegram me-1"></i><?php _e('Telegram', 'whmin'); ?>
+                                    <?php else: ?>
+                                        <span class="text-muted small me-2">
+                                            <?php _e('Email disabled', 'whmin'); ?>
                                         </span>
                                     <?php endif; ?>
-                                    <?php if (empty($recipient['notify_email']) && empty($recipient['notify_telegram'])): ?>
-                                        <span class="text-muted small"><?php _e('Disabled', 'whmin'); ?></span>
-                                    <?php endif; ?>
+
+                                    <span class="badge bg-light text-muted border ms-1">
+                                        <i class="mdi mdi-telegram me-1"></i>
+                                        <?php _e('Telegram (coming soon)', 'whmin'); ?>
+                                    </span>
                                 </td>
                                 <td class="text-center">
                                     <button class="btn btn-sm btn-outline-primary modify-recipient-btn" data-bs-toggle="tooltip" title="<?php _e('Modify', 'whmin'); ?>">

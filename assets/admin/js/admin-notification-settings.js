@@ -76,13 +76,16 @@
                             <label class="form-check-label" for="swal-notify-email">Receive email notifications</label>
                         </div>
                         <div class="form-check mt-2">
-                            <input type="checkbox" class="form-check-input" id="swal-notify-telegram" ${telegramEnabled ? 'checked' : ''}>
-                            <label class="form-check-label" for="swal-notify-telegram">Receive Telegram notifications</label>
+                            <input type="checkbox" class="form-check-input" id="swal-notify-telegram" disabled>
+                            <label class="form-check-label text-muted" for="swal-notify-telegram">
+                                Telegram notifications
+                                <span class="badge bg-light text-muted border ms-1">Coming soon</span>
+                            </label>
                         </div>
                     </div>
                     <div class="swal2-input-group">
-                        <label for="swal-telegram-chat">Telegram chat ID / @username (optional)</label>
-                        <input id="swal-telegram-chat" class="swal2-input" placeholder="@yourname or chat ID" value="${telegramChat}">
+                        <label class="text-muted" for="swal-telegram-chat">Telegram chat ID (coming soon)</label>
+                        <input id="swal-telegram-chat" class="swal2-input" placeholder="Coming soon" value="" disabled>
                     </div>
                 </div>`,
             preConfirm: () => {
@@ -90,8 +93,8 @@
                 const email    = document.getElementById('swal-email').value;
                 const tel      = document.getElementById('swal-telephone').value;
                 const notifyEmail    = document.getElementById('swal-notify-email').checked ? 1 : 0;
-                const notifyTelegram = document.getElementById('swal-notify-telegram').checked ? 1 : 0;
-                const telegramChatId = document.getElementById('swal-telegram-chat').value;
+                const notifyTelegram = 0;
+                const telegramChatId = '';
     
                 if (!name || !email) {
                     Swal.showValidationMessage('Name and Email are required');

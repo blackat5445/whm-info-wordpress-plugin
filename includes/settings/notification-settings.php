@@ -135,8 +135,10 @@ function whmin_get_notification_recipients_raw() {
         }
 
         // Normalise flags
-        $recipient['notify_email']    = isset($recipient['notify_email']) ? (bool) $recipient['notify_email'] : true;
-        $recipient['notify_telegram'] = isset($recipient['notify_telegram']) ? (bool) $recipient['notify_telegram'] : false;
+        $recipient['notify_email'] = isset($recipient['notify_email']) ? (bool) $recipient['notify_email'] : true;
+
+        // Telegram support is "coming soon": always disable it at runtime.
+        $recipient['notify_telegram'] = false;
 
         // Ensure optional fields exist
         if (!isset($recipient['telegram_chat'])) {
@@ -198,8 +200,8 @@ function whmin_ajax_save_recipient() {
         'email'          => sanitize_email($data['email']),
         'telephone'      => isset($data['telephone']) ? sanitize_text_field($data['telephone']) : '',
         'notify_email'   => !empty($data['notify_email']) ? 1 : 0,
-        'notify_telegram'=> !empty($data['notify_telegram']) ? 1 : 0,
-        'telegram_chat'  => isset($data['telegram_chat']) ? sanitize_text_field($data['telegram_chat']) : '',
+        'notify_telegram'=> 0,
+        'telegram_chat'  => '',
     ];
 
     $recipients = get_option('whmin_notification_recipients', []);
@@ -294,7 +296,7 @@ function whmin_ajax_send_test_notification() {
         $telegram_chat   = isset($recipient['telegram_chat']) ? $recipient['telegram_chat'] : '';
 
         // Skip recipients with all channels disabled
-        if (!$notify_email && !$notify_telegram) {
+        if (!$notify_email) {
             continue;
         }
 
@@ -321,15 +323,15 @@ function whmin_ajax_send_test_notification() {
             whmin_send_email_notification($email, $subject, $message_html);
         }
 
-        if ($notify_telegram && !empty($telegram_chat) && function_exists('whmin_send_telegram_notification')) {
-            $telegram_text  = sprintf(
+        // if ($notify_telegram && !empty($telegram_chat) && function_exists('whmin_send_telegram_notification')) {
+        //    $telegram_text  = sprintf(
                 /* translators: 1: site name, 2: timestamp */
-                __('Test notification from %1$s at %2$s. If you see this, Telegram alerts are working.', 'whmin'),
-                $site_name,
-                $timestamp
-            );
-            whmin_send_telegram_notification($telegram_chat, $telegram_text);
-        }
+        //        __('Test notification from %1$s at %2$s. If you see this, Telegram alerts are working.', 'whmin'),
+        //        $site_name,
+        //        $timestamp
+        //    );
+        //    whmin_send_telegram_notification($telegram_chat, $telegram_text);
+        //}
     }
 
     wp_send_json_success([

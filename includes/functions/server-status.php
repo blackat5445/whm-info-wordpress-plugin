@@ -502,6 +502,54 @@ function whmin_get_disk_usage_info() {
     ];
 }
 
+
+function whmin_get_whm_disk_usage_map() {
+    $accounts = whmin_get_whm_accounts();
+
+    if (is_wp_error($accounts) || empty($accounts) || !is_array($accounts)) {
+        return [];
+    }
+
+    $map = [];
+
+    foreach ($accounts as $account) {
+        $user = $account['user'] ?? '';
+        if (!$user) {
+            continue;
+        }
+
+        // diskused can be "123M" or "123M/500M"
+        $disk_used_raw = $account['diskused'] ?? 0;
+        if (is_string($disk_used_raw) && strpos($disk_used_raw, '/') !== false) {
+            $parts         = explode('/', $disk_used_raw, 2);
+            $disk_used_raw = $parts[0];
+        }
+        $disk_used_mb = whmin_parse_whm_size_to_mb($disk_used_raw);
+
+        // disklimit can be "unlimited", "0", or a numeric with unit
+        $disk_limit_raw = $account['disklimit'] ?? 'unlimited';
+        $disk_limit_mb  = null;
+
+        if ($disk_limit_raw !== 'unlimited' && $disk_limit_raw !== '0') {
+            $disk_limit_mb = whmin_parse_whm_size_to_mb($disk_limit_raw);
+        }
+
+        $percentage = 0;
+        if (!empty($disk_limit_mb) && $disk_limit_mb > 0) {
+            $percentage = round(($disk_used_mb / $disk_limit_mb) * 100, 2);
+        }
+
+        $map[$user] = [
+            'used_mb'    => round($disk_used_mb, 2),
+            'limit_mb'   => $disk_limit_mb !== null ? round($disk_limit_mb, 2) : null,
+            'limit_raw'  => $disk_limit_raw,
+            'percentage' => $percentage,
+        ];
+    }
+
+    return $map;
+}
+
 /**
  * Main function to fetch all private dashboard data.
  * Uses public dashboard data + cached detailed server data for performance.

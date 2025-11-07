@@ -25,8 +25,13 @@ function whmin_get_direct_connected_sites_data() {
     }
 
     // Get custom names and monitoring settings
-    $custom_names = get_option('whmin_custom_site_names', []);
-    $monitoring_settings = get_option('whmin_direct_monitoring_settings', []);
+    $custom_names         = get_option('whmin_custom_site_names', []);
+    $monitoring_settings  = get_option('whmin_direct_monitoring_settings', []);
+    $connect_status_map   = get_option('whmin_direct_connect_status', []); // NEW
+    if (!is_array($connect_status_map)) {
+        $connect_status_map = [];
+    }
+
     $sites_data = [];
     $id_counter = 1;
 
@@ -44,45 +49,54 @@ function whmin_get_direct_connected_sites_data() {
             : true;
 
         // Disk usage handling
-        $disk_used_raw = $account['diskused'];
+        $disk_used_raw        = $account['diskused'];
         $disk_usage_formatted = '';
-        $disk_used_bytes = 0;
+        $disk_used_bytes      = 0;
 
         if (strpos($disk_used_raw, '/') !== false) {
-            $parts = explode('/', $disk_used_raw);
+            $parts       = explode('/', $disk_used_raw);
             $disk_used_mb = $parts[0];
         } else {
             $disk_used_mb = $disk_used_raw;
         }
 
         if (is_numeric($disk_used_mb)) {
-            $disk_used_bytes = (float)$disk_used_mb * 1024 * 1024;
+            $disk_used_bytes      = (float)$disk_used_mb * 1024 * 1024;
             $disk_usage_formatted = whmin_format_bytes($disk_used_bytes);
         } else {
             $disk_usage_formatted = esc_html(ucfirst($disk_used_mb));
-            $disk_used_bytes = PHP_INT_MAX;
+            $disk_used_bytes      = PHP_INT_MAX;
         }
 
-        // Determine status
+        // Determine WHM/monitoring status
         if (!$monitoring_enabled) {
             $status = ['text' => __('Monitoring Disabled', 'whmin'), 'class' => 'secondary'];
-        } elseif ($account['suspended'] == 1) {
+        } elseif (!empty($account['suspended'])) {
             $status = ['text' => __('Suspended', 'whmin'), 'class' => 'danger'];
         } else {
             $status = ['text' => __('Active', 'whmin'), 'class' => 'success'];
         }
+
+        // NEW: Connect plugin / agent connection status
+        $conn_row = $connect_status_map[$user_key] ?? null;
+        if (is_array($conn_row) && ($conn_row['status'] ?? '') === 'activated') {
+            $connection_status = 'activated';
+        } else {
+            $connection_status = 'not_activated';
+        }
             
         $sites_data[] = [
-            'id'               => $id_counter++,
-            'user'             => esc_html($account['user']),
-            'name'             => esc_html($display_name),
-            'url'              => esc_url('http://' . $account['domain']),
-            'setup_date'       => esc_html(date_i18n(get_option('date_format'), $account['unix_startdate'])),
-            'setup_timestamp'  => $account['unix_startdate'],
-            'disk_used'        => $disk_usage_formatted,
-            'disk_used_bytes'  => $disk_used_bytes,
-            'status'           => $status,
+            'id'                 => $id_counter++,
+            'user'               => esc_html($account['user']),
+            'name'               => esc_html($display_name),
+            'url'                => esc_url('http://' . $account['domain']),
+            'setup_date'         => esc_html(date_i18n(get_option('date_format'), $account['unix_startdate'])),
+            'setup_timestamp'    => $account['unix_startdate'],
+            'disk_used'          => $disk_usage_formatted,
+            'disk_used_bytes'    => $disk_used_bytes,
+            'status'             => $status,
             'monitoring_enabled' => $monitoring_enabled,
+            'connection_status'  => $connection_status, // NEW
         ];
     }
 

@@ -396,6 +396,15 @@ class WHMIN {
 
         add_submenu_page(
             'whmin-settings',
+            __('WHM Info Connect', 'whmin'),
+            __('WHM Info Connect', 'whmin'),
+            'manage_options',
+            'whmin-whm-info-connect',
+            array($this, 'render_whm_connect_page')
+        );
+
+        add_submenu_page(
+            'whmin-settings',
             __('About', 'whmin'),
             __('About', 'whmin'),
             'manage_options',
@@ -424,7 +433,7 @@ class WHMIN {
         if (!current_user_can('manage_options')) return;
 
         // Per your note: render from templates/about.php
-        $about_tpl = WHMIN_PLUGIN_DIR . 'templates/about.php';
+        $about_tpl = WHMIN_PLUGIN_DIR . 'templates/admin/about.php';
         if (file_exists($about_tpl)) {
             include $about_tpl;
             return;
@@ -434,6 +443,26 @@ class WHMIN {
         echo '<div class="wrap whmin-admin-page">';
         echo '<h1>' . esc_html__('About WHM Info', 'whmin') . '</h1>';
         echo '<p>' . esc_html__('Create templates/about.php to customize this page.', 'whmin') . '</p>';
+        echo '</div>';
+    }
+
+    public function render_whm_connect_page() {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+    
+        // Prefer a dedicated template if it exists
+        $tpl = WHMIN_PLUGIN_DIR . 'templates/admin/info-whm-connect.php';
+    
+        if (file_exists($tpl)) {
+            include $tpl;
+            return;
+        }
+    
+        // Fallback (just in case template is missing)
+        echo '<div class="wrap whmin-admin-page">';
+        echo '<h1>' . esc_html__('WHM Info Connect', 'whmin') . '</h1>';
+        echo '<p>' . esc_html__('Create templates/info-whm-connect.php to customize this help page.', 'whmin') . '</p>';
         echo '</div>';
     }
 }

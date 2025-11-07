@@ -5,6 +5,7 @@
  */
 if (!defined('ABSPATH')) exit;
 
+
 $data = whmin_get_private_dashboard_data();
 $settings = whmin_get_public_settings();
 $branding = whmin_get_branding_settings();
@@ -22,103 +23,16 @@ $disk_usage      = $data['server_details']['disk_usage'] ?? [];
 $mysql_info      = $data['server_details']['mysql_info'] ?? [];
 $ssl_info        = $data['server_details']['ssl_info'] ?? [];
 $apache_status   = $data['server_details']['apache_status'] ?? [];
+// Site meta maps (to know if agent is connected)
+$all_site_meta   = get_option('whmin_site_meta', ['direct' => [], 'remote' => []]);
+$direct_meta_map = isset($all_site_meta['direct']) && is_array($all_site_meta['direct']) ? $all_site_meta['direct'] : [];
+$remote_meta_map = isset($all_site_meta['remote']) && is_array($all_site_meta['remote']) ? $all_site_meta['remote'] : [];
 
 // Grid layout logic
 $is_hosted_visible  = $settings['enable_hosted_counter'];
 $is_managed_visible = $settings['enable_managed_counter'];
 $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmin-grid-single';
 ?>
-<style>
-/* Gray highlight for deactivated rows */
-.whmin-status-row.whmin-status-deactivated {
-    background: #f3f4f6;
-    color: #6b7280;
-    opacity: .95;
-}
-.whmin-status-row.whmin-status-deactivated a { color: inherit; opacity: .9; }
-
-/* unit toggle */
-.whmin-unit-toggle {
-    display: flex;
-    gap: .5rem;
-    font-size: .7rem;
-    margin-left: auto;
-    align-items: center;
-}
-.whmin-unit-toggle span {
-    cursor: pointer;
-    color: #6b7280;
-    padding: 2px 6px;
-    border-radius: 9999px;
-    transition: background .15s ease, color .15s ease;
-}
-.whmin-unit-toggle span.active {
-    background: #075b63;
-    color: #fff;
-}
-
-/* make header flex row */
-.whmin-card.whmin-resource-card .whmin-card-header {
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-}
-
-/* ===== Skeleton loading styles ===== */
-.whmin-loading .whmin-skeleton-container {
-    display: block;
-}
-.whmin-skeleton-container {
-    display: none;
-}
-.whmin-loading .whmin-skeleton-hide-while-loading {
-    display: none;
-}
-
-.whmin-skeleton-row {
-    display: grid;
-    grid-template-columns: 2fr 2fr 1.5fr 1fr 1.5fr;
-    gap: .75rem;
-    margin-bottom: .75rem;
-}
-
-.whmin-skeleton-block {
-    position: relative;
-    overflow: hidden;
-    border-radius: 9999px;
-    background: #e5e7eb;
-    height: 12px;
-}
-
-.whmin-skeleton-block--wide {
-    height: 16px;
-    border-radius: 8px;
-}
-
-@keyframes whmin-skeleton-shimmer {
-    0% {
-        transform: translateX(-100%);
-    }
-    100% {
-        transform: translateX(100%);
-    }
-}
-
-.whmin-skeleton-block::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    transform: translateX(-100%);
-    background: linear-gradient(
-        90deg,
-        rgba(229, 231, 235, 0) 0%,
-        rgba(209, 213, 219, 0.6) 50%,
-        rgba(229, 231, 235, 0) 100%
-    );
-    animation: whmin-skeleton-shimmer 1.2s ease-in-out infinite;
-}
-</style>
-
 <div class="whmin-public-status-page whmin-private-dashboard-page whmin-loading">
     <header class="whmin-header">
         <img src="<?php echo esc_url($logo_url); ?>" alt="Logo" class="whmin-logo">
@@ -603,6 +517,7 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
                                 <th><?php _e('URL', 'whmin'); ?></th>
                                 <th><?php _e('Status', 'whmin'); ?></th>
                                 <th><?php _e('Response Time', 'whmin'); ?></th>
+                                <th><?php _e('More Information', 'whmin'); ?></th>
                                 <th><?php _e('Last Checked', 'whmin'); ?></th>
                             </tr>
                         </thead>
@@ -625,6 +540,37 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
                                 <td class="whmin-site-response" data-label="<?php _e('Response', 'whmin'); ?>">
                                     <?php echo whmin_format_response_time($site['response_time']); ?>
                                 </td>
+
+                                <td class="whmin-site-more" data-label="<?php _e('More Information', 'whmin'); ?>">
+                                    <?php
+                                    $user = $site['user'];
+                                    $meta = isset($direct_meta_map[$user]) ? $direct_meta_map[$user] : null;
+                                    // Agent is OK if it's connected and has data (agent data is usually non-empty array/object)
+                                    $agent_ok = !empty($meta['agent_connected']) && !empty($meta['data']['agent']);
+                                    $status_value = $site['status'] ?? '';
+                                    ?>
+
+                                    <?php if ($status_value === 'deactivated'): ?>
+                                        <span class="whmin-status-pill whmin-pill-muted">
+                                            <i class="mdi mdi-eye-off-outline"></i>
+                                            <?php _e('Monitoring disabled', 'whmin'); ?>
+                                        </span>
+
+                                    <?php elseif ($agent_ok): ?>
+                                        <a href="<?php echo esc_url( whmin_get_site_detail_url('direct', $user) ); ?>"
+                                        class="whmin-status-pill whmin-pill-info"> <!-- USE whmin-pill-info for brand color -->
+                                            <i class="mdi mdi-application-cog-outline"></i> <!-- Correct icon for details -->
+                                            <?php _e('View technical details', 'whmin'); ?>
+                                        </a>
+
+                                    <?php else: ?>
+                                        <span class="whmin-status-pill whmin-pill-muted">
+                                            <i class="mdi mdi-link-off"></i>
+                                            <?php _e('Agent not connected', 'whmin'); ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+
                                 <td class="whmin-site-lastcheck" data-label="<?php _e('Last Check', 'whmin'); ?>">
                                     <?php 
                                     if ($site['last_check'] > 0) {
@@ -687,6 +633,7 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
                                 <th><?php _e('Hosting Provider', 'whmin'); ?></th>
                                 <th><?php _e('Status', 'whmin'); ?></th>
                                 <th><?php _e('Response Time', 'whmin'); ?></th>
+                                <th><?php _e('More Information', 'whmin'); ?></th>
                                 <th><?php _e('Last Checked', 'whmin'); ?></th>
                             </tr>
                         </thead>
@@ -710,6 +657,33 @@ $grid_class = ($is_hosted_visible && $is_managed_visible) ? 'whmin-grid' : 'whmi
                                 </td>
                                 <td class="whmin-site-response">
                                     <?php echo whmin_format_response_time($site['response_time']); ?>
+                                </td>
+                                <td class="whmin-site-more">
+                                    <?php
+                                    $remote_uid = whmin_get_remote_site_uid_from_status_row($site);
+                                    $meta = $remote_uid && isset($remote_meta_map[$remote_uid]) ? $remote_meta_map[$remote_uid] : null;
+                                    $agent_ok = $meta && !empty($meta['agent_connected']) && !empty($meta['data']['agent']);
+                                    ?>
+
+                                    <?php if ($remote_uid && $agent_ok): ?>
+                                        <a href="<?php echo esc_url( whmin_get_site_detail_url('remote', $remote_uid) ); ?>"
+                                        class="whmin-status-pill whmin-pill-info"> <!-- USE whmin-pill-info for brand color -->
+                                            <i class="mdi mdi-application-cog-outline"></i>
+                                            <?php _e('View technical details', 'whmin'); ?>
+                                        </a>
+
+                                    <?php elseif ($remote_uid): ?>
+                                        <span class="whmin-status-pill whmin-pill-muted">
+                                            <i class="mdi mdi-link-off"></i>
+                                            <?php _e('Agent not connected', 'whmin'); ?>
+                                        </span>
+
+                                    <?php else: ?>
+                                        <span class="whmin-status-pill whmin-pill-muted">
+                                            <i class="mdi mdi-help-circle-outline"></i>
+                                            <?php _e('Not linked', 'whmin'); ?>
+                                        </span>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="whmin-site-lastcheck">
                                     <?php 

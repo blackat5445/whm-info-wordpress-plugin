@@ -53,6 +53,9 @@ class WHMIN {
         require_once WHMIN_PLUGIN_DIR . 'includes/functions/sites-status.php';
         require_once WHMIN_PLUGIN_DIR . 'includes/functions/email.php'; 
         require_once WHMIN_PLUGIN_DIR . 'includes/functions/maintenance-news.php'; 
+        require_once WHMIN_PLUGIN_DIR . 'includes/functions/site-meta.php';
+        require_once WHMIN_PLUGIN_DIR . 'includes/functions/site-detail-page.php';
+
 
 
         // Utilities
@@ -126,28 +129,41 @@ class WHMIN {
         if (is_admin()) {
             return;
         }
-
-        // Check if either shortcode is present
-        if ($this->has_public_shortcode || $this->has_private_shortcode) {
-            // Enqueue assets needed by BOTH dashboards
+    
+        // Detect special site detail route
+        $is_site_detail = (bool) get_query_var('whmin_site_info');
+    
+        // Only treat it as a private view if the current user is allowed
+        if ($is_site_detail && !current_user_can('manage_options')) {
+            $is_site_detail = false;
+        }
+    
+        // Load assets if:
+        // - public dashboard shortcode present
+        // - private dashboard shortcode present
+        // - OR we're on an admin-only site detail view
+        if ($this->has_public_shortcode || $this->has_private_shortcode || $is_site_detail) {
+    
+            // Shared assets (both dashboards + site detail)
             wp_enqueue_style('whmin-mdi-icons');
-            wp_enqueue_style('whmin-public-css'); // Private CSS depends on this, so load it always
-            wp_enqueue_script('whmin-public-js'); // Both use the same graphing logic for now
-
-            // Pass data (needed by both)
-            $history_log = get_option('whmin_status_history_log', []);
+            wp_enqueue_style('whmin-public-css');
+            wp_enqueue_script('whmin-public-js');
+    
+            // Data for charts / history
+            $history_log     = get_option('whmin_status_history_log', []);
             $public_settings = whmin_get_public_settings();
-            
-            // UPDATED: Added localization for AJAX (Load More News)
+    
             wp_localize_script('whmin-public-js', 'WHMIN_Public_Data', [
-                'history' => $history_log,
+                'history'  => $history_log,
                 'settings' => $public_settings,
-                'ajaxurl'  => admin_url('admin-ajax.php'), // Crucial for AJAX calls
-                'nonce'    => wp_create_nonce('whmin_public_nonce') // Nonce for the news AJAX handler
+                'ajaxurl'  => admin_url('admin-ajax.php'),
+                'nonce'    => wp_create_nonce('whmin_public_nonce'),
             ]);
-
-            // --- NEW: Enqueue private assets ONLY if the private shortcode is found ---
-            if ($this->has_private_shortcode) {
+    
+            // Private styles/scripts:
+            // - when private dashboard shortcode is on the page
+            // - OR when we’re on the site detail view (admin only)
+            if ($this->has_private_shortcode || $is_site_detail) {
                 wp_enqueue_style('whmin-private-css');
                 wp_enqueue_script('whmin-private-js');
             }

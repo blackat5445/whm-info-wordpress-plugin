@@ -268,23 +268,32 @@ $binoculars_metadata = get_option('whmin_binoculars_api_generated', array());
                             </div>
                             
                             <div class="col-lg-4">
+                                <?php
+                                // Example of the agent endpoint used by WHM Info to fetch metadata
+                                $whmin_agent_example = home_url('/wp-json/whmin-connect/v1/site-meta');
+                                ?>
                                 <div class="card bg-light border-0 animate__animated animate__fadeInRight animate__delay-2s">
                                     <div class="card-body">
                                         <h5 class="card-title">
                                             <i class="mdi mdi-code-tags text-primary me-2"></i>
-                                            <?php _e('API Endpoints', 'whmin'); ?>
+                                            <?php _e('Agent Endpoint (WHM Info Connect)', 'whmin'); ?>
                                         </h5>
                                         <div class="small">
                                             <p class="mb-2">
-                                                <code class="text-dark"><?php echo esc_url(rest_url('whmin/v1/status')); ?></code>
+                                                <?php _e('Each connected WordPress site exposes a REST endpoint that WHM Info calls to fetch PHP, WordPress, theme and plugins metadata:', 'whmin'); ?>
                                             </p>
                                             <p class="mb-2">
-                                                <code class="text-dark"><?php echo esc_url(rest_url('whmin/v1/server-info')); ?></code>
+                                                <code class="text-dark">
+                                                    <?php echo esc_html($whmin_agent_example); ?>
+                                                </code>
+                                            </p>
+                                            <p class="mb-0 text-muted">
+                                                <?php _e('Replace your-domain.tld with the actual site URL. WHM Info uses the same path when calling remote sites.', 'whmin'); ?>
                                             </p>
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="card mt-3 bg-gradient border-0 text-white animate__animated animate__fadeInRight animate__delay-3s" style="background: linear-gradient(135deg, #075b63, #0a8a96);">
                                     <div class="card-body">
                                         <h5 class="card-title">
@@ -292,9 +301,12 @@ $binoculars_metadata = get_option('whmin_binoculars_api_generated', array());
                                             <?php _e('Integration', 'whmin'); ?>
                                         </h5>
                                         <p class="small mb-2">
-                                            <?php _e('Add this header to your API requests:', 'whmin'); ?>
+                                            <?php _e('The WHM Info Connect plugin expects this header on /wp-json/whmin-connect/v1/site-meta:', 'whmin'); ?>
                                         </p>
                                         <code class="text-white small">X-API-Token: YOUR_TOKEN</code>
+                                        <p class="small mb-0 mt-2">
+                                            <?php _e('WHM Info automatically sends this header using the token you generate here (whmin_get_agent_api_token → whmin_get_binoculars_token). You normally do not need to call this endpoint manually.', 'whmin'); ?>
+                                        </p>
                                     </div>
                                 </div>
                                 

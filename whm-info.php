@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: WHM Info
+ * Plugin Name: WHM Info (Servers OverWatch)
  * Plugin URI: https://www.agenziamagma.it
  * Description: Key plugin to connect to WHM software and show the status of the services.
  * Version: 1.1.0

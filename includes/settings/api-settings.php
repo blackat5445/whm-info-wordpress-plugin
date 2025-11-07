@@ -344,23 +344,69 @@ add_action('rest_api_init', function() {
 * API callback to activate an indirect site's status.
 */
 function whmin_api_activate_callback($request) {
-$remote_url = trailingslashit($request->get_param('site_url'));
-$sites = get_option('whmin_indirect_sites', []);
-$site_found = false;
+    // Normalized remote URL + host
+    $remote_url  = trailingslashit($request->get_param('site_url'));
+    $remote_host = strtolower(parse_url($remote_url, PHP_URL_HOST) ?: '');
 
-foreach ($sites as $key => $site) {
-    // Compare URLs, making sure they both have a trailing slash for consistency
-    if (trailingslashit($site['url']) === $remote_url) {
-        $sites[$key]['status'] = 'activated';
-        $site_found = true;
-        break;
+    // 1) Try to match an existing IN-DIRECT site (current behaviour)
+    $sites      = get_option('whmin_indirect_sites', []);
+    $site_found = false;
+
+    foreach ($sites as $key => $site) {
+        $site_url  = trailingslashit($site['url'] ?? '');
+        $site_host = strtolower(parse_url($site_url, PHP_URL_HOST) ?: '');
+
+        if (!empty($site_host) && $site_host === $remote_host) {
+            // Mark as activated
+            $sites[$key]['status'] = 'activated';
+            $site_found = true;
+            break;
+        }
     }
-}
 
-if ($site_found) {
-    update_option('whmin_indirect_sites', $sites);
-    return new WP_REST_Response(['message' => 'Connection activated successfully.'], 200);
-}
+    if ($site_found) {
+        update_option('whmin_indirect_sites', $sites);
+        return new WP_REST_Response(['message' => 'Connection activated successfully (indirect).'], 200);
+    }
 
-return new WP_REST_Response(['message' => 'Site not found in the in-direct connection list.'], 404);
+    // 2) If not found in in-direct list, try to match a DIRECT (WHM) account
+    if (function_exists('whmin_get_whm_accounts')) {
+        $accounts = whmin_get_whm_accounts();
+        if (!is_wp_error($accounts) && is_array($accounts)) {
+            $direct_status = get_option('whmin_direct_connect_status', []);
+            if (!is_array($direct_status)) {
+                $direct_status = [];
+            }
+
+            foreach ($accounts as $account) {
+                $account_domain = $account['domain'] ?? '';
+                $account_user   = $account['user']   ?? '';
+
+                if (empty($account_domain) || empty($account_user)) {
+                    continue;
+                }
+
+                $account_host = strtolower($account_domain);
+
+                if (!empty($remote_host) && $remote_host === $account_host) {
+                    // Mark this DIRECT account as connected
+                    $direct_status[$account_user] = [
+                        'status'     => 'activated',
+                        'remote_url' => $remote_url,
+                        'updated_at' => current_time('mysql'),
+                    ];
+
+                    update_option('whmin_direct_connect_status', $direct_status);
+
+                    return new WP_REST_Response(['message' => 'Connection activated successfully (direct).'], 200);
+                }
+            }
+        }
+    }
+
+    // 3) Neither in in-direct nor direct list
+    return new WP_REST_Response(
+        ['message' => 'Site not found in the In-direct list or among WHM (direct) accounts.'],
+        404
+    );
 }

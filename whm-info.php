@@ -3,13 +3,19 @@
  * Plugin Name: WHM Info
  * Plugin URI: https://www.agenziamagma.it
  * Description: Key plugin to connect to WHM software and show the status of the services.
- * Version: 1.0.1
+ * Version: 1.1.0
  * Author: Kasra Falahati, Agenzia Magma
  * Author URI: https://www.kasra.eu
  * License: GPL-2.0+
  * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain: whmin
  * Domain Path: /languages
+ * WordPress: 5.8 or higher
+ * PHP: 7.4 or higher
+ * WHM Access: Valid WHM server with API access
+ * MySQL: 5.7 or higher (or MariaDB equivalent)
+ * Server: Apache or Nginx with mod_rewrite enabled
+ * --------------------------------------------------------------------------
  */
 
 // Exit if accessed directly
@@ -18,7 +24,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('WHMIN_VERSION', '1.0.1');
+define('WHMIN_VERSION', '1.1.0');
 define('WHMIN_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('WHMIN_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('WHMIN_PLUGIN_BASENAME', plugin_basename(__FILE__));

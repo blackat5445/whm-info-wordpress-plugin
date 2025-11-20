@@ -17,13 +17,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Helper to render a table row
-function whmin_render_email_row($service, $is_expired_section) {
+function whmin_render_email_row($service, $is_expired_section, $text_config) {
     $row_style  = $is_expired_section ? 'background-color:#fff5f5;' : '';
     $text_color = $is_expired_section ? '#dc3545' : '#333333';
     $exp_display = !empty($service['unlimited']) ? 'Unlimited' : $service['expiration_date'];
     $price_disp  = !empty($service['price']) ? $service['price'] . '&euro;' : '-';
     
-    // Check if detail/domain is set
     $detail = !empty($service['domain_detail']) ? ' <span style="color:#6c757d; font-size:12px;">[' . esc_html($service['domain_detail']) . ']</span>' : '';
     
     ?>
@@ -64,6 +63,11 @@ function whmin_render_email_row($service, $is_expired_section) {
                 <!-- Body -->
                 <tr>
                     <td style="padding:24px;">
+                        <!-- Customizable Greeting -->
+                        <p style="margin:0 0 16px 0; font-size:14px; font-weight:500;">
+                            <?php echo nl2br(esc_html($text_config['greeting_text'])); ?>
+                        </p>
+
                         <p style="margin:0 0 16px 0; font-size:14px;">
                             <strong><?php esc_html_e('Website:', 'whmin'); ?></strong> 
                             <a href="<?php echo esc_url($site_url); ?>" target="_blank" style="color:#0a8a96; text-decoration:none;"><?php echo esc_html($site_url); ?></a>
@@ -83,13 +87,19 @@ function whmin_render_email_row($service, $is_expired_section) {
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:25px; border-collapse: collapse;">
                                 <thead>
                                     <tr style="background-color:#f8f9fa;">
-                                        <th style="padding:10px; text-align:left; font-size:12px; border-bottom:2px solid #dee2e6; color:#6c757d; text-transform:uppercase;">Service</th>
-                                        <th style="padding:10px; text-align:right; font-size:12px; border-bottom:2px solid #dee2e6; color:#6c757d; text-transform:uppercase;">Price</th>
-                                        <th style="padding:10px; text-align:right; font-size:12px; border-bottom:2px solid #dee2e6; color:#6c757d; text-transform:uppercase;">Expired On</th>
+                                        <th style="padding:10px; text-align:left; font-size:12px; border-bottom:2px solid #dee2e6; color:#6c757d; text-transform:uppercase;">
+                                            <?php echo esc_html($text_config['table_header_service']); ?>
+                                        </th>
+                                        <th style="padding:10px; text-align:right; font-size:12px; border-bottom:2px solid #dee2e6; color:#6c757d; text-transform:uppercase;">
+                                            <?php echo esc_html($text_config['table_header_price']); ?>
+                                        </th>
+                                        <th style="padding:10px; text-align:right; font-size:12px; border-bottom:2px solid #dee2e6; color:#6c757d; text-transform:uppercase;">
+                                            <?php echo esc_html($text_config['table_header_expiration']); ?>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ( $list_expired as $item ) { whmin_render_email_row($item, true); } ?>
+                                    <?php foreach ( $list_expired as $item ) { whmin_render_email_row($item, true, $text_config); } ?>
                                 </tbody>
                             </table>
                         <?php endif; ?>
@@ -108,13 +118,19 @@ function whmin_render_email_row($service, $is_expired_section) {
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:16px; border-collapse: collapse;">
                                 <thead>
                                     <tr style="background-color:#f8f9fa;">
-                                        <th style="padding:10px; text-align:left; font-size:12px; border-bottom:2px solid #dee2e6; color:#6c757d; text-transform:uppercase;">Service</th>
-                                        <th style="padding:10px; text-align:right; font-size:12px; border-bottom:2px solid #dee2e6; color:#6c757d; text-transform:uppercase;">Price</th>
-                                        <th style="padding:10px; text-align:right; font-size:12px; border-bottom:2px solid #dee2e6; color:#6c757d; text-transform:uppercase;">Expiration</th>
+                                        <th style="padding:10px; text-align:left; font-size:12px; border-bottom:2px solid #dee2e6; color:#6c757d; text-transform:uppercase;">
+                                            <?php echo esc_html($text_config['table_header_service']); ?>
+                                        </th>
+                                        <th style="padding:10px; text-align:right; font-size:12px; border-bottom:2px solid #dee2e6; color:#6c757d; text-transform:uppercase;">
+                                            <?php echo esc_html($text_config['table_header_price']); ?>
+                                        </th>
+                                        <th style="padding:10px; text-align:right; font-size:12px; border-bottom:2px solid #dee2e6; color:#6c757d; text-transform:uppercase;">
+                                            <?php echo esc_html($text_config['table_header_expiration']); ?>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ( $list_soon as $item ) { whmin_render_email_row($item, false); } ?>
+                                    <?php foreach ( $list_soon as $item ) { whmin_render_email_row($item, false, $text_config); } ?>
                                 </tbody>
                             </table>
                         <?php endif; ?>
@@ -122,7 +138,7 @@ function whmin_render_email_row($service, $is_expired_section) {
                         <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
 
                         <p style="margin:0; font-size:12px; color:#adb5bd; text-align: center;">
-                            <?php echo esc_html($text_config['footer_text']); ?>
+                            <?php echo nl2br(esc_html($text_config['footer_text'])); ?>
                         </p>
                     </td>
                 </tr>

@@ -682,7 +682,7 @@ i.mdi.mdi-web-off.mdi-4x.text-muted.mb-3 {
 /* Prevent content from clipping */
 div#swal2-html-container {
     overflow: visible;
-    padding: 0.5rem 0;
+    padding: 30px;
 }
 
 div:where(.swal2-container) input:where(.swal2-input), div:where(.swal2-container) input:where(.swal2-file), div:where(.swal2-container) textarea:where(.swal2-textarea), div:where(.swal2-container) select:where(.swal2-select), div:where(.swal2-container) div:where(.swal2-radio), div:where(.swal2-container) label:where(.swal2-checkbox) {
@@ -791,4 +791,71 @@ input[type=checkbox]:checked::before {
 
 .form-switch .form-check-input {
     width: 0 !important;
+}
+/* Renew Modal Styles */
+.renew-grid-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px; /* increased padding for beauty */
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.2s;
+}
+.renew-grid-row:hover {
+    background-color: #f8f9fa;
+}
+.renew-grid-row:last-child {
+    border-bottom: none;
+}
+
+.quick-date-btn {
+    font-size: 0.75rem !important;
+    padding: 4px 8px !important;
+    line-height: 1.2 !important;
+}
+
+/* Swal Action Buttons Customization */
+.swal2-popup .swal2-styled.swal2-confirm:focus,
+.swal2-popup .swal2-styled.swal2-cancel:focus {
+    box-shadow: none !important;
+}
+
+/* Make checkboxes align nicer in modals */
+.email-service-check {
+    margin-top: 0.2rem;
+    margin-right: 0.5rem;
+}
+/* FIX FOR SWEETALERT2 WIDTH ISSUES */
+.swal2-popup.whmin-swal-modal {
+    padding: 2rem 2rem !important; /* Keep outer padding nice */
+}
+
+/* This removes the default margins that make content look "half width" */
+.swal2-popup.whmin-swal-modal .swal2-html-container {
+    margin: 1em 0 0.3em 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    overflow-x: hidden;
+}
+
+/* Renew Modal Row Styling */
+.renew-grid-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    width: 100%; /* Ensure row is full width */
+    transition: background-color 0.2s;
+}
+.renew-grid-row:hover {
+    background-color: #f8f9fa;
+}
+.renew-grid-row:last-child {
+    border-bottom: none;
+}
+
+.quick-date-btn {
+    font-size: 0.75rem !important;
+    padding: 4px 8px !important;
 }

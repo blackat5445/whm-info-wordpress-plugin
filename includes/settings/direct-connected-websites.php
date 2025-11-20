@@ -25,7 +25,7 @@ function whmin_get_direct_connected_sites_data() {
     $custom_names         = get_option('whmin_custom_site_names', []);
     $monitoring_settings  = get_option('whmin_direct_monitoring_settings', []);
     $connect_status_map   = get_option('whmin_direct_connect_status', []);
-    // NEW: Get saved service data
+    // Get saved service data
     $services_data        = get_option('whmin_site_services_data', []); 
 
     if (!is_array($connect_status_map)) $connect_status_map = [];
@@ -90,6 +90,7 @@ function whmin_get_direct_connected_sites_data() {
                     [
                         'name' => 'Hosting',
                         'price' => '',
+                        'domain_detail' => '', // Initialize for robustness
                         'start_date' => $setup_date,
                         'expiration_date' => $expiration,
                         'unlimited' => false
@@ -204,6 +205,7 @@ function whmin_ajax_save_site_services() {
             $clean_data['items'][] = [
                 'name' => sanitize_text_field($item['name']),
                 'price' => sanitize_text_field($item['price']), 
+                'domain_detail' => isset($item['domain_detail']) ? sanitize_text_field($item['domain_detail']) : '', // NEW FIELD
                 'start_date' => sanitize_text_field($item['start_date']),
                 'expiration_date' => sanitize_text_field($item['expiration_date']),
                 'unlimited' => filter_var($item['unlimited'], FILTER_VALIDATE_BOOLEAN)
@@ -303,3 +305,4 @@ function whmin_format_bytes($bytes, $precision = 2) {
     $bytes /= (pow(1024, $pow) > 0 ? pow(1024, $pow) : 1);
     return round($bytes, $precision) . ' ' . $units[$pow]; 
 }
+?>

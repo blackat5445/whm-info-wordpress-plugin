@@ -4,6 +4,9 @@ if (!defined('ABSPATH')) exit;
 $recipients_data        = whmin_get_notification_recipients();
 $notification_settings  = whmin_get_notification_settings();
 $current_interval       = $notification_settings['interval'];
+
+// NEW: Fetch custom texts for the form
+$text_settings          = whmin_get_notification_texts();
 ?>
 <!-- Section Header Card -->
 <div class="card whmin-card shadow-lg border-0 mb-4">
@@ -107,10 +110,12 @@ $current_interval       = $notification_settings['interval'];
     </div>
 </div>
 
-<!-- Global Notification Behaviour + Save/Test Buttons -->
+<!-- Global Notification Behaviour + Customizable Texts + Save/Test Buttons -->
 <form method="post" action="options.php" class="whmin-settings-form">
     <?php settings_fields('whmin_notification_settings'); ?>
+    <?php settings_fields('whmin_notification_texts'); // NEW Settings Group ?>
 
+    <!-- 1. Global Interval Settings -->
     <div class="card whmin-card shadow-lg border-0 mt-4">
         <div class="card-body p-4">
             <h4 class="card-title mb-3">
@@ -154,6 +159,76 @@ $current_interval       = $notification_settings['interval'];
                         <?php _e('Notifications are sent immediately when uptime drops below 100% and again when everything is back to normal. The interval only controls extra reminders while issues persist.', 'whmin'); ?>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Customizable Expiration Email Texts (NEW SECTION) -->
+    <div class="card whmin-card shadow-lg border-0 mt-4">
+        <div class="card-body p-4">
+            <h4 class="card-title mb-3">
+                <i class="mdi mdi-email-edit-outline text-primary me-2"></i>
+                <?php _e('Customizable Expiration Email Texts', 'whmin'); ?>
+            </h4>
+            <p class="text-muted small mb-4">
+                <?php _e('Customize the content of service expiration emails. This allows you to translate the notifications into your preferred language (e.g., Italian) or change the tone.', 'whmin'); ?>
+            </p>
+
+            <!-- Subject -->
+            <div class="mb-4">
+                <label class="form-label fw-bold"><?php _e('Email Subject', 'whmin'); ?></label>
+                <div class="input-group">
+                    <input type="text" name="whmin_notification_texts[email_subject]" class="form-control" value="<?php echo esc_attr($text_settings['email_subject']); ?>">
+                </div>
+                <div class="form-text"><?php _e('Use %site% to dynamically insert the website name.', 'whmin'); ?></div>
+            </div>
+
+            <!-- Split View Texts -->
+            <div class="row g-4">
+                <!-- Already Expired Section -->
+                <div class="col-md-6">
+                    <div class="p-3 border rounded bg-light h-100 border-danger" style="border-left-width: 4px !important;">
+                        <h6 class="text-danger mb-3">
+                            <i class="mdi mdi-alert-circle me-1"></i><?php _e('Section: Already Expired', 'whmin'); ?>
+                        </h6>
+                        
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold"><?php _e('Header Title', 'whmin'); ?></label>
+                            <input type="text" name="whmin_notification_texts[header_expired]" class="form-control form-control-sm" value="<?php echo esc_attr($text_settings['header_expired']); ?>">
+                        </div>
+                        
+                        <div class="mb-0">
+                            <label class="form-label small fw-bold"><?php _e('Body Text', 'whmin'); ?></label>
+                            <textarea name="whmin_notification_texts[body_expired]" class="form-control form-control-sm" rows="4"><?php echo esc_textarea($text_settings['body_expired']); ?></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expiring Soon Section -->
+                <div class="col-md-6">
+                    <div class="p-3 border rounded bg-light h-100 border-warning" style="border-left-width: 4px !important;">
+                        <h6 class="text-warning mb-3" style="color: #b58900 !important;">
+                            <i class="mdi mdi-clock-alert-outline me-1"></i><?php _e('Section: Expiring Soon', 'whmin'); ?>
+                        </h6>
+                        
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold"><?php _e('Header Title', 'whmin'); ?></label>
+                            <input type="text" name="whmin_notification_texts[header_soon]" class="form-control form-control-sm" value="<?php echo esc_attr($text_settings['header_soon']); ?>">
+                        </div>
+                        
+                        <div class="mb-0">
+                            <label class="form-label small fw-bold"><?php _e('Body Text', 'whmin'); ?></label>
+                            <textarea name="whmin_notification_texts[body_soon]" class="form-control form-control-sm" rows="4"><?php echo esc_textarea($text_settings['body_soon']); ?></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Text -->
+            <div class="mt-4">
+                <label class="form-label fw-bold"><?php _e('Email Footer Text', 'whmin'); ?></label>
+                <input type="text" name="whmin_notification_texts[footer_text]" class="form-control" value="<?php echo esc_attr($text_settings['footer_text']); ?>">
+                <div class="form-text"><?php _e('Appears at the bottom of the email content, before the branding footer.', 'whmin'); ?></div>
             </div>
         </div>
     </div>

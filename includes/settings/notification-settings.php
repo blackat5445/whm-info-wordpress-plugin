@@ -11,9 +11,10 @@ if (!defined('ABSPATH')) exit;
 // -----------------------------------------------------------------------------
 
 /**
- * Register notification settings (global behaviour).
+ * Register notification settings (global behaviour + custom texts).
  */
 function whmin_register_notification_settings() {
+    // Existing: Interval Settings
     register_setting(
         'whmin_notification_settings',
         'whmin_notification_settings',
@@ -23,11 +24,22 @@ function whmin_register_notification_settings() {
             'default'           => array(),
         )
     );
+
+    // NEW: Custom Email Text Settings
+    register_setting(
+        'whmin_notification_texts',
+        'whmin_notification_texts',
+        array(
+            'type'              => 'array',
+            'sanitize_callback' => 'whmin_sanitize_notification_texts',
+            'default'           => array(),
+        )
+    );
 }
 add_action('admin_init', 'whmin_register_notification_settings');
 
 /**
- * Sanitize notification settings.
+ * Sanitize notification settings (Interval).
  *
  * @param array $settings
  * @return array
@@ -55,6 +67,28 @@ function whmin_sanitize_notification_settings($settings) {
 }
 
 /**
+ * NEW: Sanitize Notification Texts.
+ *
+ * @param array $input
+ * @return array
+ */
+function whmin_sanitize_notification_texts($input) {
+    $sanitized = [];
+    $fields = [
+        'email_subject', 
+        'header_expired', 'body_expired', 
+        'header_soon', 'body_soon', 
+        'footer_text'
+    ];
+
+    foreach ($fields as $field) {
+        // Allow basic HTML if needed, or just textarea sanitization
+        $sanitized[$field] = isset($input[$field]) ? sanitize_textarea_field($input[$field]) : '';
+    }
+    return $sanitized;
+}
+
+/**
  * Get global notification settings (with defaults).
  *
  * @return array
@@ -69,6 +103,29 @@ function whmin_get_notification_settings() {
         $stored = array();
     }
 
+    return wp_parse_args($stored, $defaults);
+}
+
+/**
+ * NEW: Get Custom Email Texts (with English Defaults).
+ *
+ * @return array
+ */
+function whmin_get_notification_texts() {
+    $defaults = [
+        'email_subject'   => 'Service Expiration Notice',
+        'header_expired'  => 'Services Already Expired',
+        'body_expired'    => "The following services have expired.\nImmediate action is required to restore full functionality.",
+        'header_soon'     => 'Services Expiring Soon',
+        'body_soon'       => "The following services are expiring soon.\nPlease arrange for renewal to avoid interruption.",
+        'footer_text'     => 'This is an automated notification. Please contact us to renew your services.'
+    ];
+    
+    $stored = get_option('whmin_notification_texts', []);
+    if (!is_array($stored)) {
+        $stored = [];
+    }
+    
     return wp_parse_args($stored, $defaults);
 }
 
@@ -322,16 +379,6 @@ function whmin_ajax_send_test_notification() {
         if ($notify_email && is_email($email)) {
             whmin_send_email_notification($email, $subject, $message_html);
         }
-
-        // if ($notify_telegram && !empty($telegram_chat) && function_exists('whmin_send_telegram_notification')) {
-        //    $telegram_text  = sprintf(
-                /* translators: 1: site name, 2: timestamp */
-        //        __('Test notification from %1$s at %2$s. If you see this, Telegram alerts are working.', 'whmin'),
-        //        $site_name,
-        //        $timestamp
-        //    );
-        //    whmin_send_telegram_notification($telegram_chat, $telegram_text);
-        //}
     }
 
     wp_send_json_success([

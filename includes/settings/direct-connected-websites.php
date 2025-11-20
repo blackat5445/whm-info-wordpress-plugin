@@ -246,43 +246,95 @@ function whmin_ajax_send_service_email() {
         wp_send_json_error(['message' => __('Primary email address is missing.', 'whmin')]);
     }
 
-    // Filter services
-    $services_to_send = [];
+    // 1. Separate Services into lists
+    $expired_services = [];
+    $soon_services = [];
+    
+    $now = time();
+
     foreach ($site_data['items'] as $index => $item) {
         if (in_array($index, $selected_services_indices)) {
-            $services_to_send[] = $item;
+            // Check expiry status
+            if (!$item['unlimited'] && !empty($item['expiration_date'])) {
+                $exp_ts = strtotime($item['expiration_date']);
+                if ($exp_ts < $now) {
+                    $expired_services[] = $item;
+                } else {
+                    $soon_services[] = $item;
+                }
+            } else {
+                // Unlimited services typically go into 'soon' or a separate list, treating as active
+                $soon_services[] = $item; 
+            }
         }
     }
 
-    if (empty($services_to_send)) {
+    if (empty($expired_services) && empty($soon_services)) {
         wp_send_json_error(['message' => __('No services selected.', 'whmin')]);
     }
 
-    // Prepare Email
-    $custom_names = get_option('whmin_custom_site_names', []);
-    $site_name = !empty($custom_names[$user]) ? $custom_names[$user] : $user;
+    // 2. Fetch Settings (Branding & Texts)
+    $branding = whmin_get_branding_settings(); // Uses helper from branding.php
+    $texts = whmin_get_notification_texts();   // Uses helper from notification-settings.php
+
+    // 3. Prepare Template Variables
+    $branding_name = !empty($branding['footer_note']) && strpos($branding['footer_note'], 'href') !== false 
+        ? strip_tags($branding['footer_note']) // Simplification, ideally pull 'footer_link' logic
+        : get_bloginfo('name');
+        
+    // Better: Use the Branding Link if available, otherwise site name
+    $company_name = 'WHM Info'; // Fallback
+    $company_link = '';
     
-    // Fetch URL from account cache to display in email
+    // Try to parse company name from footer note or branding settings if you had a specific name field. 
+    // Since branding only has logo/footer_note/link, we default to Blog Name but link it.
+    $display_from_name = get_bloginfo('name');
+    $display_from_link = !empty($branding['footer_link']) ? $branding['footer_link'] : home_url();
+
+    // Find client site URL
     $accounts = whmin_get_whm_accounts(); 
-    $site_url = '';
+    $client_site_url = '';
     if(!is_wp_error($accounts)) {
         foreach($accounts as $acc) {
             if($acc['user'] === $user) {
-                $site_url = 'http://' . $acc['domain'];
+                $client_site_url = 'http://' . $acc['domain'];
                 break;
             }
         }
     }
 
-    $subject = sprintf(__('Action Required: Service Expiration for %s', 'whmin'), $site_name);
-    
+    $custom_names = get_option('whmin_custom_site_names', []);
+    $site_friendly_name = !empty($custom_names[$user]) ? $custom_names[$user] : $user;
+
+    // Subject
+    $subject = $texts['email_subject']; 
+    // Allow placeholder in subject if desired, e.g. %site%
+    $subject = str_replace('%site%', $site_friendly_name, $subject);
+
     ob_start();
+    
+    // Variables for Template
     $recipient_name = 'Customer'; 
-    $services = $services_to_send;
+    $site_name      = $site_friendly_name;
+    $site_url       = $client_site_url;
+    
+    // Pass arrays
+    $list_expired   = $expired_services;
+    $list_soon      = $soon_services;
+    
+    // Pass Texts
+    $text_config    = $texts;
+    
+    // Pass Branding
+    $brand_link     = $display_from_link;
+    
     include WHMIN_PLUGIN_DIR . 'templates/email-service-expiration.php'; 
     $message = ob_get_clean();
 
     $headers = ['Content-Type: text/html; charset=UTF-8'];
+    // Optional: Set "From" name if allowed by server config
+    // $headers[] = 'From: ' . $display_from_name . ' <' . get_option('admin_email') . '>';
+    
     if ($cc_email && is_email($cc_email)) {
         $headers[] = 'Cc: ' . $cc_email;
     }
@@ -296,6 +348,7 @@ function whmin_ajax_send_service_email() {
     }
 }
 add_action('wp_ajax_whmin_send_service_email', 'whmin_ajax_send_service_email');
+
 
 function whmin_format_bytes($bytes, $precision = 2) { 
     $units = ['B', 'KB', 'MB', 'GB', 'TB']; 

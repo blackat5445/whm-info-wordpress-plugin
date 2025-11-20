@@ -4,9 +4,12 @@ if (!defined('ABSPATH')) exit;
 $recipients_data        = whmin_get_notification_recipients();
 $notification_settings  = whmin_get_notification_settings();
 $current_interval       = $notification_settings['interval'];
-
-// NEW: Fetch custom texts for the form
 $text_settings          = whmin_get_notification_texts();
+$auto_settings          = whmin_get_auto_expiration_settings();
+
+// Get all sites for the multi-select
+$sites_data = whmin_get_direct_connected_sites_data();
+$enabled_sites = $auto_settings['enabled_sites'];
 ?>
 <!-- Section Header Card -->
 <div class="card whmin-card shadow-lg border-0 mb-4">
@@ -110,10 +113,11 @@ $text_settings          = whmin_get_notification_texts();
     </div>
 </div>
 
-<!-- Global Notification Behaviour + Customizable Texts + Save/Test Buttons -->
+<!-- Global Notification Behaviour + Customizable Texts + Auto Emails + Save/Test Buttons -->
 <form method="post" action="options.php" class="whmin-settings-form">
     <?php settings_fields('whmin_notification_settings'); ?>
-    <?php settings_fields('whmin_notification_texts'); // NEW Settings Group ?>
+    <?php settings_fields('whmin_notification_texts'); ?>
+    <?php settings_fields('whmin_auto_expiration_settings'); ?>
 
     <!-- 1. Global Interval Settings -->
     <div class="card whmin-card shadow-lg border-0 mt-4">
@@ -163,24 +167,98 @@ $text_settings          = whmin_get_notification_texts();
         </div>
     </div>
 
-    <!-- 2. Customizable Expiration Email Texts (NEW SECTION) -->
+    <!-- 2. Automatic Expiration Emails -->
+    <div class="card whmin-card shadow-lg border-0 mt-4">
+        <div class="card-body p-4">
+            <h4 class="card-title mb-3">
+                <i class="mdi mdi-email-sync text-warning me-2"></i>
+                <?php _e('Automatic Expiration Emails', 'whmin'); ?>
+            </h4>
+            <p class="text-muted small mb-4">
+                <?php _e('Automatically send service expiration notifications to site owners based on expiration dates.', 'whmin'); ?>
+            </p>
+
+            <div class="form-check form-switch mb-4">
+                <input class="form-check-input" type="checkbox" name="whmin_auto_expiration_settings[enable_auto_emails]" 
+                       id="enable_auto_emails" value="1" <?php checked($auto_settings['enable_auto_emails'], 1); ?>>
+                <label class="form-check-label fw-bold" for="enable_auto_emails">
+                    <?php _e('Enable automatic expiration emails', 'whmin'); ?>
+                </label>
+                <div class="form-text"><?php _e('When enabled, emails will be sent daily to site owners whose services are expiring soon or already expired.', 'whmin'); ?></div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold"><?php _e('Days before expiration to notify', 'whmin'); ?></label>
+                <input type="number" name="whmin_auto_expiration_settings[days_before]" class="form-control" 
+                       value="<?php echo esc_attr($auto_settings['days_before']); ?>" min="1" max="90">
+                <div class="form-text"><?php _e('Send notifications when services are expiring within this many days (default: 21)', 'whmin'); ?></div>
+            </div>
+
+            <div class="mb-0">
+                <label class="form-label fw-bold"><?php _e('Enable automatic emails for these sites', 'whmin'); ?></label>
+                <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                    <?php if (!empty($sites_data) && !is_wp_error($sites_data)): ?>
+                        <?php foreach ($sites_data as $site): ?>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" 
+                                       name="whmin_auto_expiration_settings[enabled_sites][]" 
+                                       value="<?php echo esc_attr($site['user']); ?>" 
+                                       id="site_<?php echo esc_attr($site['user']); ?>"
+                                       <?php checked(in_array($site['user'], $enabled_sites)); ?>>
+                                <label class="form-check-label" for="site_<?php echo esc_attr($site['user']); ?>">
+                                    <strong><?php echo esc_html($site['name']); ?></strong>
+                                    <small class="text-muted">(<?php echo esc_html($site['user']); ?>)</small>
+                                </label>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p class="text-muted mb-0"><?php _e('No sites available. Please add sites in Direct Connected Websites.', 'whmin'); ?></p>
+                    <?php endif; ?>
+                </div>
+                <div class="form-text"><?php _e('Only selected sites will receive automatic expiration notifications.', 'whmin'); ?></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Customizable Expiration Email Texts -->
     <div class="card whmin-card shadow-lg border-0 mt-4">
         <div class="card-body p-4">
             <h4 class="card-title mb-3">
                 <i class="mdi mdi-email-edit-outline text-primary me-2"></i>
-                <?php _e('Customizable Expiration Email Texts', 'whmin'); ?>
+                <?php _e('Expiration Email Customization', 'whmin'); ?>
             </h4>
             <p class="text-muted small mb-4">
-                <?php _e('Customize the content of service expiration emails. This allows you to translate the notifications into your preferred language (e.g., Italian) or change the tone.', 'whmin'); ?>
+                <?php _e('Customize the content of service expiration emails.', 'whmin'); ?>
             </p>
 
             <!-- Subject -->
             <div class="mb-4">
                 <label class="form-label fw-bold"><?php _e('Email Subject', 'whmin'); ?></label>
-                <div class="input-group">
-                    <input type="text" name="whmin_notification_texts[email_subject]" class="form-control" value="<?php echo esc_attr($text_settings['email_subject']); ?>">
-                </div>
+                <input type="text" name="whmin_notification_texts[email_subject]" class="form-control" value="<?php echo esc_attr($text_settings['email_subject']); ?>">
                 <div class="form-text"><?php _e('Use %site% to dynamically insert the website name.', 'whmin'); ?></div>
+            </div>
+
+            <!-- Greeting -->
+            <div class="mb-4">
+                <label class="form-label fw-bold"><?php _e('Greeting Text', 'whmin'); ?></label>
+                <input type="text" name="whmin_notification_texts[greeting_text]" class="form-control" value="<?php echo esc_attr($text_settings['greeting_text']); ?>">
+                <div class="form-text"><?php _e('The greeting at the beginning of the email (e.g., "Dear Client,").', 'whmin'); ?></div>
+            </div>
+
+            <!-- Table Headers -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold"><?php _e('Table Header: Service', 'whmin'); ?></label>
+                    <input type="text" name="whmin_notification_texts[table_header_service]" class="form-control" value="<?php echo esc_attr($text_settings['table_header_service']); ?>">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold"><?php _e('Table Header: Price', 'whmin'); ?></label>
+                    <input type="text" name="whmin_notification_texts[table_header_price]" class="form-control" value="<?php echo esc_attr($text_settings['table_header_price']); ?>">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold"><?php _e('Table Header: Expiration', 'whmin'); ?></label>
+                    <input type="text" name="whmin_notification_texts[table_header_expiration]" class="form-control" value="<?php echo esc_attr($text_settings['table_header_expiration']); ?>">
+                </div>
             </div>
 
             <!-- Split View Texts -->
@@ -228,7 +306,98 @@ $text_settings          = whmin_get_notification_texts();
             <div class="mt-4">
                 <label class="form-label fw-bold"><?php _e('Email Footer Text', 'whmin'); ?></label>
                 <input type="text" name="whmin_notification_texts[footer_text]" class="form-control" value="<?php echo esc_attr($text_settings['footer_text']); ?>">
-                <div class="form-text"><?php _e('Appears at the bottom of the email content, before the branding footer.', 'whmin'); ?></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Renewal Email Customization -->
+    <div class="card whmin-card shadow-lg border-0 mt-4">
+        <div class="card-body p-4">
+            <h4 class="card-title mb-3">
+                <i class="mdi mdi-check-circle-outline text-success me-2"></i>
+                <?php _e('Renewal Email Customization', 'whmin'); ?>
+            </h4>
+            <p class="text-muted small mb-4">
+                <?php _e('Customize the content of service renewal confirmation emails.', 'whmin'); ?>
+            </p>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold"><?php _e('Subject', 'whmin'); ?></label>
+                <input type="text" name="whmin_notification_texts[renewal_subject]" class="form-control" value="<?php echo esc_attr($text_settings['renewal_subject']); ?>">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold"><?php _e('Greeting', 'whmin'); ?></label>
+                <input type="text" name="whmin_notification_texts[renewal_greeting]" class="form-control" value="<?php echo esc_attr($text_settings['renewal_greeting']); ?>">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold"><?php _e('Header', 'whmin'); ?></label>
+                <input type="text" name="whmin_notification_texts[renewal_header]" class="form-control" value="<?php echo esc_attr($text_settings['renewal_header']); ?>">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold"><?php _e('Body Text', 'whmin'); ?></label>
+                <textarea name="whmin_notification_texts[renewal_body]" class="form-control" rows="3"><?php echo esc_textarea($text_settings['renewal_body']); ?></textarea>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold"><?php _e('Table Header: Service', 'whmin'); ?></label>
+                    <input type="text" name="whmin_notification_texts[renewal_table_header_service]" class="form-control" value="<?php echo esc_attr($text_settings['renewal_table_header_service']); ?>">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold"><?php _e('Table Header: Price', 'whmin'); ?></label>
+                    <input type="text" name="whmin_notification_texts[renewal_table_header_price]" class="form-control" value="<?php echo esc_attr($text_settings['renewal_table_header_price']); ?>">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold"><?php _e('Table Header: New Expiration', 'whmin'); ?></label>
+                    <input type="text" name="whmin_notification_texts[renewal_table_header_new_expiration]" class="form-control" value="<?php echo esc_attr($text_settings['renewal_table_header_new_expiration']); ?>">
+                </div>
+            </div>
+
+            <div class="mb-0">
+                <label class="form-label fw-bold"><?php _e('Footer Text', 'whmin'); ?></label>
+                <input type="text" name="whmin_notification_texts[renewal_footer]" class="form-control" value="<?php echo esc_attr($text_settings['renewal_footer']); ?>">
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. News Email Customization -->
+    <div class="card whmin-card shadow-lg border-0 mt-4">
+        <div class="card-body p-4">
+            <h4 class="card-title mb-3">
+                <i class="mdi mdi-newspaper-variant-outline text-info me-2"></i>
+                <?php _e('News/Blog Email Customization', 'whmin'); ?>
+            </h4>
+            <p class="text-muted small mb-4">
+                <?php _e('Customize the content of news notification emails sent when new blog posts are published.', 'whmin'); ?>
+            </p>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold"><?php _e('Subject', 'whmin'); ?></label>
+                <input type="text" name="whmin_notification_texts[news_subject]" class="form-control" value="<?php echo esc_attr($text_settings['news_subject']); ?>">
+                <div class="form-text"><?php _e('Use %title% for the post title.', 'whmin'); ?></div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold"><?php _e('Greeting', 'whmin'); ?></label>
+                <input type="text" name="whmin_notification_texts[news_greeting]" class="form-control" value="<?php echo esc_attr($text_settings['news_greeting']); ?>">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold"><?php _e('Header', 'whmin'); ?></label>
+                <input type="text" name="whmin_notification_texts[news_header]" class="form-control" value="<?php echo esc_attr($text_settings['news_header']); ?>">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold"><?php _e('Body Text', 'whmin'); ?></label>
+                <textarea name="whmin_notification_texts[news_body]" class="form-control" rows="3"><?php echo esc_textarea($text_settings['news_body']); ?></textarea>
+            </div>
+
+            <div class="mb-0">
+                <label class="form-label fw-bold"><?php _e('Footer Text', 'whmin'); ?></label>
+                <input type="text" name="whmin_notification_texts[news_footer]" class="form-control" value="<?php echo esc_attr($text_settings['news_footer']); ?>">
             </div>
         </div>
     </div>

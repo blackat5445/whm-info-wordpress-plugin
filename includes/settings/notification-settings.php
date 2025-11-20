@@ -25,7 +25,7 @@ function whmin_register_notification_settings() {
         )
     );
 
-    // NEW: Custom Email Text Settings
+    // Custom Email Text Settings
     register_setting(
         'whmin_notification_texts',
         'whmin_notification_texts',
@@ -35,14 +35,22 @@ function whmin_register_notification_settings() {
             'default'           => array(),
         )
     );
+
+    // NEW: Automatic Expiration Email Settings
+    register_setting(
+        'whmin_auto_expiration_settings',
+        'whmin_auto_expiration_settings',
+        array(
+            'type'              => 'array',
+            'sanitize_callback' => 'whmin_sanitize_auto_expiration_settings',
+            'default'           => array(),
+        )
+    );
 }
 add_action('admin_init', 'whmin_register_notification_settings');
 
 /**
  * Sanitize notification settings (Interval).
- *
- * @param array $settings
- * @return array
  */
 function whmin_sanitize_notification_settings($settings) {
     $settings = is_array($settings) ? $settings : array();
@@ -67,31 +75,64 @@ function whmin_sanitize_notification_settings($settings) {
 }
 
 /**
- * NEW: Sanitize Notification Texts.
- *
- * @param array $input
- * @return array
+ * Sanitize Notification Texts.
  */
 function whmin_sanitize_notification_texts($input) {
     $sanitized = [];
     $fields = [
+        // Expiration Email
         'email_subject', 
-        'header_expired', 'body_expired', 
-        'header_soon', 'body_soon', 
-        'footer_text'
+        'greeting_text',
+        'header_expired', 
+        'body_expired', 
+        'header_soon', 
+        'body_soon', 
+        'footer_text',
+        'table_header_service',
+        'table_header_price',
+        'table_header_expiration',
+        
+        // Renewal Email
+        'renewal_subject',
+        'renewal_greeting',
+        'renewal_header',
+        'renewal_body',
+        'renewal_footer',
+        'renewal_table_header_service',
+        'renewal_table_header_price',
+        'renewal_table_header_new_expiration',
+        
+        // News Email
+        'news_subject',
+        'news_greeting',
+        'news_header',
+        'news_body',
+        'news_footer'
     ];
 
     foreach ($fields as $field) {
-        // Allow basic HTML if needed, or just textarea sanitization
         $sanitized[$field] = isset($input[$field]) ? sanitize_textarea_field($input[$field]) : '';
     }
     return $sanitized;
 }
 
 /**
+ * NEW: Sanitize automatic expiration settings.
+ */
+function whmin_sanitize_auto_expiration_settings($input) {
+    $sanitized = [];
+    
+    $sanitized['enable_auto_emails'] = !empty($input['enable_auto_emails']) ? 1 : 0;
+    $sanitized['days_before'] = isset($input['days_before']) ? absint($input['days_before']) : 21;
+    $sanitized['enabled_sites'] = isset($input['enabled_sites']) && is_array($input['enabled_sites']) 
+        ? array_map('sanitize_text_field', $input['enabled_sites']) 
+        : [];
+    
+    return $sanitized;
+}
+
+/**
  * Get global notification settings (with defaults).
- *
- * @return array
  */
 function whmin_get_notification_settings() {
     $defaults = array(
@@ -107,18 +148,38 @@ function whmin_get_notification_settings() {
 }
 
 /**
- * NEW: Get Custom Email Texts (with English Defaults).
- *
- * @return array
+ * Get Custom Email Texts (with English Defaults).
  */
 function whmin_get_notification_texts() {
     $defaults = [
+        // Expiration Email
         'email_subject'   => 'Service Expiration Notice',
+        'greeting_text'   => 'Dear Client,',
         'header_expired'  => 'Services Already Expired',
         'body_expired'    => "The following services have expired.\nImmediate action is required to restore full functionality.",
         'header_soon'     => 'Services Expiring Soon',
         'body_soon'       => "The following services are expiring soon.\nPlease arrange for renewal to avoid interruption.",
-        'footer_text'     => 'This is an automated notification. Please contact us to renew your services.'
+        'footer_text'     => 'This is an automated notification. Please contact us to renew your services.',
+        'table_header_service' => 'Service',
+        'table_header_price' => 'Price',
+        'table_header_expiration' => 'Expiration',
+        
+        // Renewal Email
+        'renewal_subject' => 'Service Renewal Confirmation',
+        'renewal_greeting' => 'Dear Client,',
+        'renewal_header' => 'Services Successfully Renewed',
+        'renewal_body' => "We are pleased to confirm that the following services have been renewed.\nYour services will continue without interruption.",
+        'renewal_footer' => 'Thank you for your continued business.',
+        'renewal_table_header_service' => 'Service',
+        'renewal_table_header_price' => 'Price',
+        'renewal_table_header_new_expiration' => 'New Expiration Date',
+        
+        // News Email
+        'news_subject' => 'New Announcement: %title%',
+        'news_greeting' => 'Dear Client,',
+        'news_header' => 'Latest News & Updates',
+        'news_body' => 'We have published a new announcement that may be of interest to you:',
+        'news_footer' => 'Stay tuned for more updates.'
     ];
     
     $stored = get_option('whmin_notification_texts', []);
@@ -130,11 +191,25 @@ function whmin_get_notification_texts() {
 }
 
 /**
+ * NEW: Get automatic expiration settings.
+ */
+function whmin_get_auto_expiration_settings() {
+    $defaults = [
+        'enable_auto_emails' => 0,
+        'days_before' => 21,
+        'enabled_sites' => []
+    ];
+    
+    $stored = get_option('whmin_auto_expiration_settings', []);
+    if (!is_array($stored)) {
+        $stored = [];
+    }
+    
+    return wp_parse_args($stored, $defaults);
+}
+
+/**
  * Helper: get current notification interval in seconds.
- * - server_refresh => uses current status cron interval
- * - others => fixed intervals
- *
- * @return int
  */
 function whmin_get_notification_interval_seconds() {
     $settings = whmin_get_notification_settings();
@@ -153,13 +228,11 @@ function whmin_get_notification_interval_seconds() {
             return 24 * HOUR_IN_SECONDS;
         case 'server_refresh':
         default:
-            // Tie to current status cron schedule if available
             if (function_exists('whmin_get_status_cron_schedule') && function_exists('whmin_get_interval_minutes_for_schedule')) {
                 $schedule_slug = whmin_get_status_cron_schedule();
                 $mins          = whmin_get_interval_minutes_for_schedule($schedule_slug);
                 return (int) max(1, $mins) * MINUTE_IN_SECONDS;
             }
-            // Fallback
             return 15 * MINUTE_IN_SECONDS;
     }
 }
@@ -168,16 +241,12 @@ function whmin_get_notification_interval_seconds() {
 // Recipients storage + AJAX
 // -----------------------------------------------------------------------------
 
-// Hook all AJAX actions
 add_action('wp_ajax_whmin_save_recipient', 'whmin_ajax_save_recipient');
 add_action('wp_ajax_whmin_delete_recipient', 'whmin_ajax_delete_recipient');
 add_action('wp_ajax_whmin_send_test_notification', 'whmin_ajax_send_test_notification');
 
 /**
- * Raw recipients as stored in the option (no injected numeric id),
- * with normalised flags for backward compatibility.
- *
- * @return array
+ * Raw recipients as stored in the option.
  */
 function whmin_get_notification_recipients_raw() {
     $recipients = get_option('whmin_notification_recipients', array());
@@ -186,18 +255,11 @@ function whmin_get_notification_recipients_raw() {
     }
 
     foreach ($recipients as &$recipient) {
-        // Ensure UID exists (for older data, just to be safe)
         if (empty($recipient['uid'])) {
             $recipient['uid'] = uniqid('recipient_');
         }
-
-        // Normalise flags
         $recipient['notify_email'] = isset($recipient['notify_email']) ? (bool) $recipient['notify_email'] : true;
-
-        // Telegram support is "coming soon": always disable it at runtime.
         $recipient['notify_telegram'] = false;
-
-        // Ensure optional fields exist
         if (!isset($recipient['telegram_chat'])) {
             $recipient['telegram_chat'] = '';
         }
@@ -211,9 +273,7 @@ function whmin_get_notification_recipients_raw() {
 }
 
 /**
- * Retrieves the list of notification recipients from the database (for table).
- *
- * @return array An array of recipient data.
+ * Retrieves the list of notification recipients (for table).
  */
 function whmin_get_notification_recipients() {
     $recipients = whmin_get_notification_recipients_raw();
@@ -222,12 +282,9 @@ function whmin_get_notification_recipients() {
 
     foreach ($recipients as $recipient) {
         $recipient['id'] = $id_counter++;
-
-        // Ensure flags exist & are boolean-like
         $recipient['notify_email']    = isset($recipient['notify_email']) ? (bool) $recipient['notify_email'] : true;
         $recipient['notify_telegram'] = isset($recipient['notify_telegram']) ? (bool) $recipient['notify_telegram'] : false;
         $recipient['telegram_chat']   = isset($recipient['telegram_chat']) ? $recipient['telegram_chat'] : '';
-
         $data[] = $recipient;
     }
 
@@ -245,12 +302,10 @@ function whmin_ajax_save_recipient() {
 
     $data = isset($_POST['recipient_data']) ? (array) $_POST['recipient_data'] : array();
     
-    // Server-side validation
     if (empty($data['name']) || empty($data['email']) || !is_email($data['email'])) {
         wp_send_json_error(['message' => __('A valid Name and Email are required.', 'whmin')], 400);
     }
 
-    // Sanitize all fields
     $sanitized_data = [
         'uid'            => isset($data['uid']) && !empty($data['uid']) ? sanitize_text_field($data['uid']) : uniqid('recipient_'),
         'name'           => sanitize_text_field($data['name']),
@@ -268,7 +323,6 @@ function whmin_ajax_save_recipient() {
 
     $is_update = false;
 
-    // Find and update if UID exists
     foreach ($recipients as $key => $recipient) {
         if (isset($recipient['uid']) && $recipient['uid'] === $sanitized_data['uid']) {
             $recipients[$key] = $sanitized_data;
@@ -277,7 +331,6 @@ function whmin_ajax_save_recipient() {
         }
     }
 
-    // Add if it's a new recipient
     if (!$is_update) {
         $recipients[] = $sanitized_data;
     }
@@ -304,7 +357,6 @@ function whmin_ajax_delete_recipient() {
     $recipients         = get_option('whmin_notification_recipients', []);
     $updated_recipients = [];
 
-    // Rebuild the array, excluding the one to be deleted
     foreach ($recipients as $recipient) {
         if (!isset($recipient['uid']) || $recipient['uid'] !== $uid) {
             $updated_recipients[] = $recipient;
@@ -326,7 +378,6 @@ function whmin_ajax_send_test_notification() {
         wp_send_json_error(['message' => __('Permission denied.', 'whmin')], 403);
     }
 
-    // Make sure helper functions exist
     if (!function_exists('whmin_send_email_notification')) {
         wp_send_json_error(['message' => __('Email helpers are not available.', 'whmin')], 500);
     }
@@ -344,20 +395,15 @@ function whmin_ajax_send_test_notification() {
         current_time('timestamp')
     );
 
-    // Build a simple HTML body; per-recipient we only personalise the name
     foreach ($recipients as $recipient) {
         $name            = isset($recipient['name']) ? $recipient['name'] : '';
         $email           = isset($recipient['email']) ? $recipient['email'] : '';
         $notify_email    = isset($recipient['notify_email']) ? (bool) $recipient['notify_email'] : true;
-        $notify_telegram = isset($recipient['notify_telegram']) ? (bool) $recipient['notify_telegram'] : false;
-        $telegram_chat   = isset($recipient['telegram_chat']) ? $recipient['telegram_chat'] : '';
 
-        // Skip recipients with all channels disabled
         if (!$notify_email) {
             continue;
         }
 
-        // HTML email content
         $greeting = $name
             ? sprintf(esc_html__('Hi %s,', 'whmin'), esc_html($name))
             : esc_html__('Hi,', 'whmin');

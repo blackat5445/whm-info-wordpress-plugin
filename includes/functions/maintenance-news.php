@@ -5,8 +5,6 @@ if (!defined('ABSPATH')) {
 
 /**
  * Returns all impact options (including "normal").
- *
- * Keys are stored as meta value; label/color are for display.
  */
 function whmin_get_news_impact_options() {
     return array(
@@ -16,19 +14,19 @@ function whmin_get_news_impact_options() {
         ),
         'no_impact' => array(
             'label' => __('No impact – informational', 'whmin'),
-            'color' => '#6B7280', // gray
+            'color' => '#6B7280',
         ),
         'low_impact' => array(
             'label' => __('Low impact', 'whmin'),
-            'color' => '#16A34A', // green
+            'color' => '#16A34A',
         ),
         'medium_impact' => array(
             'label' => __('Medium impact', 'whmin'),
-            'color' => '#F97316', // orange
+            'color' => '#F97316',
         ),
         'high_impact' => array(
             'label' => __('High impact', 'whmin'),
-            'color' => '#DC2626', // red
+            'color' => '#DC2626',
         ),
     );
 }
@@ -59,6 +57,8 @@ function whmin_render_maintenance_news_meta_box($post) {
         $current = 'normal';
     }
 
+    $send_email = get_post_meta($post->ID, '_whmin_send_news_email', true);
+
     $options = whmin_get_news_impact_options();
     ?>
     <p><?php esc_html_e('How should this post appear on your WHM Info status page?', 'whmin'); ?></p>
@@ -77,6 +77,18 @@ function whmin_render_maintenance_news_meta_box($post) {
     <p class="description">
         <?php esc_html_e('Select "Normal post" to hide it from the Maintenance & News section.', 'whmin'); ?>
     </p>
+    
+    <hr style="margin: 15px 0;">
+    
+    <p>
+        <label for="whmin_send_news_email">
+            <input type="checkbox" name="whmin_send_news_email" id="whmin_send_news_email" value="1" <?php checked($send_email, '1'); ?>>
+            <?php esc_html_e('Send email notification to site owners', 'whmin'); ?>
+        </label>
+    </p>
+    <p class="description">
+        <?php esc_html_e('When published, this post will be emailed to all enabled site owners in Direct Connected Websites.', 'whmin'); ?>
+    </p>
     <?php
 }
 
@@ -84,7 +96,6 @@ function whmin_render_maintenance_news_meta_box($post) {
  * Save meta box value.
  */
 function whmin_save_maintenance_news_meta_box($post_id) {
-    // Autosave / revisions / nonce / capability checks
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
         return;
     }
@@ -109,21 +120,114 @@ function whmin_save_maintenance_news_meta_box($post_id) {
         $impact = 'normal';
     }
 
-    // Store as meta; keep "normal" explicitly, or delete to be safe.
     if ($impact === 'normal') {
         delete_post_meta($post_id, '_whmin_news_impact');
     } else {
         update_post_meta($post_id, '_whmin_news_impact', $impact);
     }
+
+    // Save email notification checkbox
+    $send_email = isset($_POST['whmin_send_news_email']) ? '1' : '0';
+    update_post_meta($post_id, '_whmin_send_news_email', $send_email);
 }
 add_action('save_post', 'whmin_save_maintenance_news_meta_box');
 
 /**
+ * Hook into post publish to send news email notifications
+ */
+function whmin_send_news_email_on_publish($post_id, $post) {
+    // Check if this is an autosave or revision
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+        return;
+    }
+    
+    if (wp_is_post_revision($post_id)) {
+        return;
+    }
+    
+    // Only for published posts
+    if ($post->post_status !== 'publish' || $post->post_type !== 'post') {
+        return;
+    }
+    
+    // Check if email notification is enabled for this post
+    $send_email = get_post_meta($post_id, '_whmin_send_news_email', true);
+    if ($send_email !== '1') {
+        return;
+    }
+    
+    // Check if we already sent email for this post
+    $already_sent = get_post_meta($post_id, '_whmin_news_email_sent', true);
+    if ($already_sent === '1') {
+        return; // Already sent
+    }
+    
+    // Get automatic expiration settings to see which sites have notifications enabled
+    $auto_settings = whmin_get_auto_expiration_settings();
+    $enabled_sites = $auto_settings['enabled_sites'];
+    
+    if (empty($enabled_sites)) {
+        return; // No sites enabled for notifications
+    }
+    
+    // Get all site service data
+    $all_services_data = get_option('whmin_site_services_data', []);
+    
+    // Get branding and text settings
+    $branding = whmin_get_branding_settings();
+    $texts = whmin_get_notification_texts();
+    $brand_link = !empty($branding['footer_link']) ? $branding['footer_link'] : home_url();
+    
+    // Prepare post data
+    $post_title = get_the_title($post_id);
+    $post_url = get_permalink($post_id);
+    $post_date = get_the_date('', $post_id);
+    $post_content = apply_filters('the_content', $post->post_content);
+    
+    // Send email to each enabled site owner
+    foreach ($enabled_sites as $user) {
+        if (!isset($all_services_data[$user])) {
+            continue;
+        }
+        
+        $site_data = $all_services_data[$user];
+        $recipient_email = $site_data['emails']['primary'];
+        $cc_email = $site_data['emails']['secondary'];
+        
+        if (!is_email($recipient_email)) {
+            continue;
+        }
+        
+        // Prepare subject
+        $subject = $texts['news_subject'];
+        $subject = str_replace('%title%', $post_title, $subject);
+        
+        // Prepare template variables
+        ob_start();
+        
+        $recipient_name = 'Customer';
+        $text_config = $texts;
+        
+        include WHMIN_PLUGIN_DIR . 'templates/email-news-notification.php';
+        $message = ob_get_clean();
+        
+        // Prepare headers
+        $headers = ['Content-Type: text/html; charset=UTF-8'];
+        if ($cc_email && is_email($cc_email)) {
+            $headers[] = 'Cc: ' . $cc_email;
+        }
+        
+        // Send email
+        wp_mail($recipient_email, $subject, $message, $headers);
+    }
+    
+    // Mark as sent
+    update_post_meta($post_id, '_whmin_news_email_sent', '1');
+}
+add_action('publish_post', 'whmin_send_news_email_on_publish', 10, 2);
+
+/**
  * Fetch recent posts that should appear in Maintenance & News.
- *
- * @param int $limit Number of posts to return.
- * @param array $args Additional WP_Query arguments (e.g., 'offset').
- * @return array[]
  */
 function whmin_get_maintenance_news_items($limit = 5, $args = array()) {
     $options      = whmin_get_news_impact_options();
@@ -147,7 +251,6 @@ function whmin_get_maintenance_news_items($limit = 5, $args = array()) {
         ),
     );
     
-    // Merge provided arguments (like 'offset') with defaults
     $query_args = array_merge($default_query_args, $args); 
 
     $query = new WP_Query($query_args);
@@ -170,22 +273,18 @@ function whmin_get_maintenance_news_items($limit = 5, $args = array()) {
         $impact_label = $options[$impact_slug]['label'];
         $impact_color = $options[$impact_slug]['color'];
 
-        // Prefer explicit excerpt, fallback to content.
         $content = has_excerpt($post_id) ? get_the_excerpt() : get_the_content(null, false, $post_id);
         $text    = wp_strip_all_tags($content);
 
-        // Trim to 350 chars with ellipsis
         $excerpt = $text;
         if (function_exists('mb_strlen')) {
             if (mb_strlen($text, 'UTF-8') > 350) {
                 $excerpt = mb_substr($text, 0, 350, 'UTF-8') . '…';
             }
-            // else: no need for else, excerpt is already $text
         } else {
             if (strlen($text) > 350) {
                 $excerpt = substr($text, 0, 350) . '…';
             }
-            // else: no need for else, excerpt is already $text
         }
 
         $items[] = array(
@@ -207,11 +306,8 @@ function whmin_get_maintenance_news_items($limit = 5, $args = array()) {
 
 /**
  * Renders the HTML for a single news item.
- * @param array $item The news item data array.
  */
 function whmin_render_single_news_item($item) {
-    // This function is only called for NON-featured items from the template/AJAX, 
-    // so we don't need the 'is-featured' class here.
     ?>
     <div class="whmin-news-item">
         <a class="whmin-news-link" href="<?php echo esc_url($item['permalink']); ?>">
@@ -236,18 +332,14 @@ function whmin_render_single_news_item($item) {
 }
 
 /**
- * Render the full Maintenance & News card (used by both public & private dashboards).
- *
- * @param int $limit Number of posts to render initially.
+ * Render the full Maintenance & News card.
  */
 function whmin_render_maintenance_news_section($limit = 7) {
-    // Get one more than the limit to determine if a "Load More" button is needed.
     $all_items = whmin_get_maintenance_news_items($limit + 1);
     
     $has_more = count($all_items) > $limit;
     $items    = array_slice($all_items, 0, $limit);
 
-    // WHMIN_PLUGIN_DIR is assumed to be defined in the main plugin file.
     if (!defined('WHMIN_PLUGIN_DIR')) {
         return;
     }
@@ -255,7 +347,6 @@ function whmin_render_maintenance_news_section($limit = 7) {
     $template_path = WHMIN_PLUGIN_DIR . 'templates/maintenance-news-section.php';
 
     if (file_exists($template_path)) {
-        // Pass variables to the template by including it
         include $template_path;
     } else {
         echo '<p>' . esc_html__('Maintenance & News template not found.', 'whmin') . '</p>';
@@ -266,13 +357,11 @@ function whmin_render_maintenance_news_section($limit = 7) {
  * AJAX handler for loading more maintenance news items.
  */
 function whmin_ajax_load_more_news() {
-    // Using the same nonce as localized in WHMIN::enqueue_frontend_assets
     check_ajax_referer('whmin_public_nonce', 'nonce'); 
     
     $offset = intval($_POST['offset'] ?? 0);
-    $limit  = 7; // Fixed batch size for loading more
+    $limit  = 7;
 
-    // Get a batch + 1 to check for more
     $query_args = array(
         'offset'         => $offset,
         'posts_per_page' => $limit + 1,

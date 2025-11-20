@@ -11,7 +11,6 @@ if (!defined('ABSPATH')) {
  * Retrieves and prepares the list of directly connected websites.
  */
 function whmin_get_direct_connected_sites_data() {
-    // Fetch the list of accounts from the WHM API
     $accounts_response = whmin_get_whm_accounts();
 
     if (is_wp_error($accounts_response)) {
@@ -25,7 +24,6 @@ function whmin_get_direct_connected_sites_data() {
     $custom_names         = get_option('whmin_custom_site_names', []);
     $monitoring_settings  = get_option('whmin_direct_monitoring_settings', []);
     $connect_status_map   = get_option('whmin_direct_connect_status', []);
-    // Get saved service data
     $services_data        = get_option('whmin_site_services_data', []); 
 
     if (!is_array($connect_status_map)) $connect_status_map = [];
@@ -40,7 +38,6 @@ function whmin_get_direct_connected_sites_data() {
         $display_name = !empty($custom_names[$user_key]) ? $custom_names[$user_key] : $user_key;
         $monitoring_enabled = isset($monitoring_settings[$user_key]) ? (bool)$monitoring_settings[$user_key] : true;
 
-        // Disk usage handling
         $disk_used_raw        = $account['diskused'];
         $disk_usage_formatted = '';
         $disk_used_bytes      = 0;
@@ -60,7 +57,6 @@ function whmin_get_direct_connected_sites_data() {
             $disk_used_bytes      = PHP_INT_MAX;
         }
 
-        // Determine Status
         if (!$monitoring_enabled) {
             $status = ['text' => __('Monitoring Disabled', 'whmin'), 'class' => 'secondary'];
         } elseif (!empty($account['suspended'])) {
@@ -69,15 +65,12 @@ function whmin_get_direct_connected_sites_data() {
             $status = ['text' => __('Active', 'whmin'), 'class' => 'success'];
         }
 
-        // Connection Status
         $conn_row = $connect_status_map[$user_key] ?? null;
         $connection_status = (is_array($conn_row) && ($conn_row['status'] ?? '') === 'activated') ? 'activated' : 'not_activated';
 
-        // --- SERVICE LOGIC ---
         if (isset($services_data[$user_key])) {
             $site_services = $services_data[$user_key];
         } else {
-            // Default Logic: Hosting service based on account creation date
             $setup_date = date('Y-m-d', $account['unix_startdate']);
             $expiration = date('Y-m-d', strtotime('+1 year', $account['unix_startdate']));
             
@@ -90,7 +83,7 @@ function whmin_get_direct_connected_sites_data() {
                     [
                         'name' => 'Hosting',
                         'price' => '',
-                        'domain_detail' => '', // Initialize for robustness
+                        'domain_detail' => '',
                         'start_date' => $setup_date,
                         'expiration_date' => $expiration,
                         'unlimited' => false
@@ -111,7 +104,7 @@ function whmin_get_direct_connected_sites_data() {
             'status'             => $status,
             'monitoring_enabled' => $monitoring_enabled,
             'connection_status'  => $connection_status,
-            'services'           => $site_services // Data for frontend
+            'services'           => $site_services
         ];
     }
 
@@ -176,7 +169,7 @@ function whmin_ajax_toggle_direct_monitoring() {
 add_action('wp_ajax_whmin_toggle_direct_monitoring', 'whmin_ajax_toggle_direct_monitoring');
 
 /**
- * AJAX: Save Site Services (Emails + Service List)
+ * AJAX: Save Site Services
  */
 function whmin_ajax_save_site_services() {
     check_ajax_referer('whmin_admin_nonce', 'nonce');
@@ -191,7 +184,6 @@ function whmin_ajax_save_site_services() {
         wp_send_json_error(['message' => __('Invalid data.', 'whmin')]);
     }
 
-    // Sanitize
     $clean_data = [
         'emails' => [
             'primary' => sanitize_email($data['emails']['primary']),
@@ -205,7 +197,7 @@ function whmin_ajax_save_site_services() {
             $clean_data['items'][] = [
                 'name' => sanitize_text_field($item['name']),
                 'price' => sanitize_text_field($item['price']), 
-                'domain_detail' => isset($item['domain_detail']) ? sanitize_text_field($item['domain_detail']) : '', // NEW FIELD
+                'domain_detail' => isset($item['domain_detail']) ? sanitize_text_field($item['domain_detail']) : '',
                 'start_date' => sanitize_text_field($item['start_date']),
                 'expiration_date' => sanitize_text_field($item['expiration_date']),
                 'unlimited' => filter_var($item['unlimited'], FILTER_VALIDATE_BOOLEAN)
@@ -246,52 +238,19 @@ function whmin_ajax_send_service_email() {
         wp_send_json_error(['message' => __('Primary email address is missing.', 'whmin')]);
     }
 
-    // 1. Separate Services into lists
-    $expired_services = [];
-    $soon_services = [];
-    
-    $now = time();
+    // Check for other expiring/expired services
+    $all_services_to_notify = whmin_get_services_needing_notification($user, $site_data['items'], $selected_services_indices);
 
-    foreach ($site_data['items'] as $index => $item) {
-        if (in_array($index, $selected_services_indices)) {
-            // Check expiry status
-            if (!$item['unlimited'] && !empty($item['expiration_date'])) {
-                $exp_ts = strtotime($item['expiration_date']);
-                if ($exp_ts < $now) {
-                    $expired_services[] = $item;
-                } else {
-                    $soon_services[] = $item;
-                }
-            } else {
-                // Unlimited services typically go into 'soon' or a separate list, treating as active
-                $soon_services[] = $item; 
-            }
-        }
-    }
-
-    if (empty($expired_services) && empty($soon_services)) {
+    if (empty($all_services_to_notify['expired']) && empty($all_services_to_notify['soon'])) {
         wp_send_json_error(['message' => __('No services selected.', 'whmin')]);
     }
 
-    // 2. Fetch Settings (Branding & Texts)
-    $branding = whmin_get_branding_settings(); // Uses helper from branding.php
-    $texts = whmin_get_notification_texts();   // Uses helper from notification-settings.php
+    $branding = whmin_get_branding_settings();
+    $texts = whmin_get_notification_texts();
 
-    // 3. Prepare Template Variables
-    $branding_name = !empty($branding['footer_note']) && strpos($branding['footer_note'], 'href') !== false 
-        ? strip_tags($branding['footer_note']) // Simplification, ideally pull 'footer_link' logic
-        : get_bloginfo('name');
-        
-    // Better: Use the Branding Link if available, otherwise site name
-    $company_name = 'WHM Info'; // Fallback
-    $company_link = '';
-    
-    // Try to parse company name from footer note or branding settings if you had a specific name field. 
-    // Since branding only has logo/footer_note/link, we default to Blog Name but link it.
     $display_from_name = get_bloginfo('name');
     $display_from_link = !empty($branding['footer_link']) ? $branding['footer_link'] : home_url();
 
-    // Find client site URL
     $accounts = whmin_get_whm_accounts(); 
     $client_site_url = '';
     if(!is_wp_error($accounts)) {
@@ -306,34 +265,23 @@ function whmin_ajax_send_service_email() {
     $custom_names = get_option('whmin_custom_site_names', []);
     $site_friendly_name = !empty($custom_names[$user]) ? $custom_names[$user] : $user;
 
-    // Subject
     $subject = $texts['email_subject']; 
-    // Allow placeholder in subject if desired, e.g. %site%
     $subject = str_replace('%site%', $site_friendly_name, $subject);
 
     ob_start();
     
-    // Variables for Template
     $recipient_name = 'Customer'; 
     $site_name      = $site_friendly_name;
     $site_url       = $client_site_url;
-    
-    // Pass arrays
-    $list_expired   = $expired_services;
-    $list_soon      = $soon_services;
-    
-    // Pass Texts
+    $list_expired   = $all_services_to_notify['expired'];
+    $list_soon      = $all_services_to_notify['soon'];
     $text_config    = $texts;
-    
-    // Pass Branding
     $brand_link     = $display_from_link;
     
     include WHMIN_PLUGIN_DIR . 'templates/email-service-expiration.php'; 
     $message = ob_get_clean();
 
     $headers = ['Content-Type: text/html; charset=UTF-8'];
-    // Optional: Set "From" name if allowed by server config
-    // $headers[] = 'From: ' . $display_from_name . ' <' . get_option('admin_email') . '>';
     
     if ($cc_email && is_email($cc_email)) {
         $headers[] = 'Cc: ' . $cc_email;
@@ -342,6 +290,9 @@ function whmin_ajax_send_service_email() {
     $sent = wp_mail($recipient_email, $subject, $message, $headers);
 
     if ($sent) {
+        // Store that we sent notification for these services
+        whmin_mark_services_notified($user, array_merge($all_services_to_notify['expired'], $all_services_to_notify['soon']));
+        
         wp_send_json_success(['message' => __('Email sent successfully.', 'whmin')]);
     } else {
         wp_send_json_error(['message' => __('Failed to send email.', 'whmin')]);
@@ -349,6 +300,263 @@ function whmin_ajax_send_service_email() {
 }
 add_action('wp_ajax_whmin_send_service_email', 'whmin_ajax_send_service_email');
 
+/**
+ * NEW: AJAX handler to renew services and send email notification
+ */
+function whmin_ajax_renew_site_services() {
+    check_ajax_referer('whmin_admin_nonce', 'nonce');
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => __('Permission denied.', 'whmin')]);
+    }
+
+    $user = sanitize_text_field($_POST['user']);
+    $renewed_services_data = isset($_POST['renewed_services']) ? $_POST['renewed_services'] : [];
+
+    if (empty($user) || empty($renewed_services_data)) {
+        wp_send_json_error(['message' => __('Invalid data.', 'whmin')]);
+    }
+
+    $all_data = get_option('whmin_site_services_data', []);
+    if (!isset($all_data[$user])) {
+        wp_send_json_error(['message' => __('Site not found.', 'whmin')]);
+    }
+
+    $site_data = $all_data[$user];
+    $recipient_email = $site_data['emails']['primary'];
+    $cc_email = $site_data['emails']['secondary'];
+
+    if (!is_email($recipient_email)) {
+        wp_send_json_error(['message' => __('Primary email address is missing.', 'whmin')]);
+    }
+
+    // Update expiration dates for renewed services
+    $renewed_services = [];
+    foreach ($renewed_services_data as $renewal) {
+        $index = intval($renewal['index']);
+        $new_expiration = sanitize_text_field($renewal['new_expiration']);
+        
+        if (isset($site_data['items'][$index])) {
+            $site_data['items'][$index]['expiration_date'] = $new_expiration;
+            $renewed_services[] = $site_data['items'][$index];
+        }
+    }
+
+    // Save updated data
+    $all_data[$user] = $site_data;
+    update_option('whmin_site_services_data', $all_data);
+
+    // Send renewal confirmation email
+    $branding = whmin_get_branding_settings();
+    $texts = whmin_get_notification_texts();
+
+    $display_from_link = !empty($branding['footer_link']) ? $branding['footer_link'] : home_url();
+
+    $accounts = whmin_get_whm_accounts(); 
+    $client_site_url = '';
+    if(!is_wp_error($accounts)) {
+        foreach($accounts as $acc) {
+            if($acc['user'] === $user) {
+                $client_site_url = 'http://' . $acc['domain'];
+                break;
+            }
+        }
+    }
+
+    $custom_names = get_option('whmin_custom_site_names', []);
+    $site_friendly_name = !empty($custom_names[$user]) ? $custom_names[$user] : $user;
+
+    $subject = $texts['renewal_subject'];
+
+    ob_start();
+    
+    $recipient_name = 'Customer';
+    $site_name = $site_friendly_name;
+    $site_url = $client_site_url;
+    $renewed_items = $renewed_services;
+    $text_config = $texts;
+    $brand_link = $display_from_link;
+    
+    include WHMIN_PLUGIN_DIR . 'templates/email-service-renewed.php';
+    $message = ob_get_clean();
+
+    $headers = ['Content-Type: text/html; charset=UTF-8'];
+    
+    if ($cc_email && is_email($cc_email)) {
+        $headers[] = 'Cc: ' . $cc_email;
+    }
+
+    $sent = wp_mail($recipient_email, $subject, $message, $headers);
+
+    if ($sent) {
+        wp_send_json_success(['message' => __('Services renewed and email sent successfully.', 'whmin')]);
+    } else {
+        wp_send_json_success(['message' => __('Services renewed but failed to send email.', 'whmin')]);
+    }
+}
+add_action('wp_ajax_whmin_renew_site_services', 'whmin_ajax_renew_site_services');
+
+/**
+ * Helper: Get all services needing notification (expired or expiring soon)
+ */
+function whmin_get_services_needing_notification($user, $all_services, $selected_indices = []) {
+    $expired_services = [];
+    $soon_services = [];
+    $now = time();
+    
+    // Get days before threshold from settings
+    $auto_settings = whmin_get_auto_expiration_settings();
+    $days_threshold = $auto_settings['days_before'];
+    $threshold_time = strtotime("+{$days_threshold} days", $now);
+
+    foreach ($all_services as $index => $item) {
+        // Check if this service should be included
+        $should_include = empty($selected_indices) || in_array($index, $selected_indices);
+        
+        if ($should_include && !$item['unlimited'] && !empty($item['expiration_date'])) {
+            $exp_ts = strtotime($item['expiration_date']);
+            
+            if ($exp_ts < $now) {
+                // Already expired
+                $expired_services[] = $item;
+            } elseif ($exp_ts < $threshold_time) {
+                // Expiring soon
+                $soon_services[] = $item;
+            }
+        }
+    }
+
+    return [
+        'expired' => $expired_services,
+        'soon' => $soon_services
+    ];
+}
+
+/**
+ * Helper: Mark services as notified
+ */
+function whmin_mark_services_notified($user, $services) {
+    $notified_services = get_option('whmin_notified_services', []);
+    
+    if (!isset($notified_services[$user])) {
+        $notified_services[$user] = [];
+    }
+    
+    foreach ($services as $service) {
+        $service_key = md5(serialize($service));
+        $notified_services[$user][$service_key] = time();
+    }
+    
+    update_option('whmin_notified_services', $notified_services);
+}
+
+/**
+ * Cron job to check and send automatic expiration emails
+ */
+function whmin_check_automatic_expiration_emails() {
+    $auto_settings = whmin_get_auto_expiration_settings();
+    
+    if (!$auto_settings['enable_auto_emails']) {
+        return; // Feature disabled
+    }
+    
+    $enabled_sites = $auto_settings['enabled_sites'];
+    if (empty($enabled_sites)) {
+        return; // No sites enabled
+    }
+    
+    $all_services_data = get_option('whmin_site_services_data', []);
+    
+    foreach ($enabled_sites as $user) {
+        if (!isset($all_services_data[$user])) {
+            continue;
+        }
+        
+        $site_data = $all_services_data[$user];
+        $services_to_notify = whmin_get_services_needing_notification($user, $site_data['items']);
+        
+        if (empty($services_to_notify['expired']) && empty($services_to_notify['soon'])) {
+            continue; // Nothing to notify
+        }
+        
+        // Check if we already notified recently
+        $notified_services = get_option('whmin_notified_services', []);
+        $should_send = false;
+        
+        foreach (array_merge($services_to_notify['expired'], $services_to_notify['soon']) as $service) {
+            $service_key = md5(serialize($service));
+            if (!isset($notified_services[$user][$service_key]) || 
+                (time() - $notified_services[$user][$service_key]) > (24 * HOUR_IN_SECONDS)) {
+                $should_send = true;
+                break;
+            }
+        }
+        
+        if (!$should_send) {
+            continue; // Already notified recently
+        }
+        
+        // Send email
+        $recipient_email = $site_data['emails']['primary'];
+        $cc_email = $site_data['emails']['secondary'];
+        
+        if (!is_email($recipient_email)) {
+            continue;
+        }
+        
+        $branding = whmin_get_branding_settings();
+        $texts = whmin_get_notification_texts();
+        
+        $display_from_link = !empty($branding['footer_link']) ? $branding['footer_link'] : home_url();
+        
+        $accounts = whmin_get_whm_accounts();
+        $client_site_url = '';
+        if (!is_wp_error($accounts)) {
+            foreach ($accounts as $acc) {
+                if ($acc['user'] === $user) {
+                    $client_site_url = 'http://' . $acc['domain'];
+                    break;
+                }
+            }
+        }
+        
+        $custom_names = get_option('whmin_custom_site_names', []);
+        $site_friendly_name = !empty($custom_names[$user]) ? $custom_names[$user] : $user;
+        
+        $subject = $texts['email_subject'];
+        $subject = str_replace('%site%', $site_friendly_name, $subject);
+        
+        ob_start();
+        
+        $recipient_name = 'Customer';
+        $site_name = $site_friendly_name;
+        $site_url = $client_site_url;
+        $list_expired = $services_to_notify['expired'];
+        $list_soon = $services_to_notify['soon'];
+        $text_config = $texts;
+        $brand_link = $display_from_link;
+        
+        include WHMIN_PLUGIN_DIR . 'templates/email-service-expiration.php';
+        $message = ob_get_clean();
+        
+        $headers = ['Content-Type: text/html; charset=UTF-8'];
+        
+        if ($cc_email && is_email($cc_email)) {
+            $headers[] = 'Cc: ' . $cc_email;
+        }
+        
+        $sent = wp_mail($recipient_email, $subject, $message, $headers);
+        
+        if ($sent) {
+            whmin_mark_services_notified($user, array_merge($services_to_notify['expired'], $services_to_notify['soon']));
+        }
+    }
+}
+
+// Schedule cron job if not already scheduled
+if (!wp_next_scheduled('whmin_automatic_expiration_check')) {
+    wp_schedule_event(time(), 'daily', 'whmin_automatic_expiration_check');
+}
+add_action('whmin_automatic_expiration_check', 'whmin_check_automatic_expiration_emails');
 
 function whmin_format_bytes($bytes, $precision = 2) { 
     $units = ['B', 'KB', 'MB', 'GB', 'TB']; 
@@ -358,4 +566,3 @@ function whmin_format_bytes($bytes, $precision = 2) {
     $bytes /= (pow(1024, $pow) > 0 ? pow(1024, $pow) : 1);
     return round($bytes, $precision) . ' ' . $units[$pow]; 
 }
-?>

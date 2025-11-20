@@ -105,7 +105,6 @@
         Swal.fire({
             title: 'Modify Services',
             width: '900px',
-            // IMPORTANT: Added 'whmin-swal-modal' to popup class to fix width issues via CSS
             customClass: {
                 popup: 'whmin-swal-modal',
                 confirmButton: 'swal2-styled btn-primary-custom',
@@ -242,7 +241,7 @@
         `;
     }
 
-    // --- 2. RENEW SERVICES ---
+    // --- 2. RENEW SERVICES (NOW WITH EMAIL) ---
     function handleRenewClick() {
         const $btn = $(this);
         const user = $btn.data('user');
@@ -287,7 +286,6 @@
         Swal.fire({
             title: 'Renew Services',
             width: '700px',
-            // Use the custom class here too
             customClass: {
                 popup: 'whmin-swal-modal',
                 confirmButton: 'swal2-styled'
@@ -299,22 +297,36 @@
                 </div>
             `,
             showCancelButton: true,
-            confirmButtonText: 'Update Expirations',
+            confirmButtonText: 'Renew & Send Email',
             didOpen: () => {
                 const confirmBtn = Swal.getConfirmButton();
                 confirmBtn.style.backgroundColor = '#198754';
                 confirmBtn.style.boxShadow = 'none';
             },
             preConfirm: () => {
+                const renewedServices = [];
                 $('.renew-grid-row').each(function() {
                     const index = $(this).data('index');
                     const newDate = $(this).find('.renew-date-input').val();
-                    items[index].expiration_date = newDate;
+                    if (items[index].expiration_date !== newDate) {
+                        renewedServices.push({
+                            index: index,
+                            new_expiration: newDate
+                        });
+                    }
                 });
-                return { emails: emails, items: items };
+                
+                if (renewedServices.length === 0) {
+                    Swal.showValidationMessage('No changes detected');
+                    return false;
+                }
+                
+                return { renewed_services: renewedServices };
             }
         }).then((result) => {
-            if (result.isConfirmed) saveServicesData(user, result.value);
+            if (result.isConfirmed) {
+                renewServices(user, result.value.renewed_services);
+            }
         });
     }
 
@@ -348,135 +360,198 @@
 
         Swal.fire({
             title: 'Send Expiration Notification',
-            width: '600px',
-            customClass: {
-                popup: 'whmin-swal-modal', // Ensures width fixes apply
-                confirmButton: 'text-dark'
+            width: '500px',
+            customClass: { 
+                popup: 'whmin-swal-modal',
+                confirmButton: 'swal2-styled'
             },
             html: `
-                <div class="text-start mb-3 border p-3 rounded bg-white w-100" style="max-height:250px; overflow-y:auto;">
-                    ${listHtml}
-                </div>
-                <div class="d-flex justify-content-between">
-                    <button type="button" id="auto-detect-expired" class="btn btn-sm btn-outline-primary">
-                        <i class="mdi mdi-auto-fix"></i> Auto Detect Expired
+                <div class="text-start">
+                    <p class="text-muted small">Select services to include in the expiration email.</p>
+                    <button type="button" id="auto-detect-expired" class="btn btn-sm btn-outline-danger mb-2">
+                        <i class="mdi mdi-auto-fix"></i> Auto-select Expired
                     </button>
+                    <div class="border rounded p-2 bg-light" style="max-height: 250px; overflow-y: auto;">
+                        ${listHtml}
+                    </div>
                 </div>
             `,
             showCancelButton: true,
             confirmButtonText: 'Send Email',
             didOpen: () => {
                 const confirmBtn = Swal.getConfirmButton();
-                confirmBtn.style.backgroundColor = '#ffc107';
-                confirmBtn.style.color = '#212529';
-                confirmBtn.style.boxShadow = 'none';
+                confirmBtn.style.backgroundColor = '#fd7e14';
             },
             preConfirm: () => {
-                const selected = [];
-                $('.email-service-check:checked').each(function() { selected.push($(this).val()); });
-                if (selected.length === 0) { Swal.showValidationMessage('Select at least one service'); return false; }
-                return selected;
+                const selectedIndices = [];
+                $('.email-service-check:checked').each(function() {
+                    selectedIndices.push(parseInt($(this).val()));
+                });
+                if (selectedIndices.length === 0) {
+                    Swal.showValidationMessage('Please select at least one service');
+                    return false;
+                }
+                return selectedIndices;
             }
         }).then((result) => {
-            if (result.isConfirmed) sendEmail(user, result.value);
+            if (result.isConfirmed) sendServiceEmail(user, result.value);
         });
     }
 
-    // --- COMMON FUNCTIONS ---
+    // --- 4. TOGGLE MONITORING ---
+    function handleMonitoringToggle() {
+        const $btn = $(this);
+        const user = $btn.data('user');
+        const currentlyEnabled = $btn.data('enabled') == 1;
+        const newState = !currentlyEnabled;
+
+        $.post(WHMIN_Admin.ajaxurl, {
+            action: 'whmin_toggle_direct_monitoring',
+            nonce: WHMIN_Admin.nonce,
+            user: user,
+            enabled: newState
+        }).done(response => {
+            if (response.success) {
+                $btn.data('enabled', newState ? 1 : 0);
+                $btn.toggleClass('btn-secondary btn-outline-secondary');
+                const icon = $btn.find('i');
+                icon.toggleClass('mdi-eye mdi-eye-off');
+                $btn.attr('title', newState ? 'Monitoring Active - Click to Disable' : 'Monitoring Disabled - Click to Enable');
+                toastr.success(response.data.message);
+            } else {
+                toastr.error(response.data.message);
+            }
+        }).fail(() => toastr.error('Network error'));
+    }
+
+    // ==========================================
+    //  AJAX FUNCTIONS
+    // ==========================================
 
     function saveServicesData(user, data) {
-        Swal.fire({ title: 'Saving...', didOpen: () => Swal.showLoading() });
-
+        Swal.showLoading();
+        
+        // Also update site name
+        $.post(WHMIN_Admin.ajaxurl, {
+            action: 'whmin_update_site_name',
+            nonce: WHMIN_Admin.nonce,
+            user: user,
+            new_name: data.newName
+        });
+        
         $.post(WHMIN_Admin.ajaxurl, {
             action: 'whmin_save_site_services',
             nonce: WHMIN_Admin.nonce,
             user: user,
             data: data
-        }).done(function(response) {
+        }).done(response => {
+            Swal.close();
             if (response.success) {
-                if (data.newName) {
-                    $.post(WHMIN_Admin.ajaxurl, {
-                        action: 'whmin_update_site_name',
-                        nonce: WHMIN_Admin.nonce,
-                        user: user,
-                        new_name: data.newName
-                    });
-                }
-                Swal.fire({
-                    icon: 'success', 
-                    title: 'Saved!', 
-                    text: 'Services updated successfully.',
-                    timer: 1500,
-                    showConfirmButton: false
-                }).then(() => location.reload());
+                toastr.success(response.data.message);
+                setTimeout(() => location.reload(), 500);
             } else {
                 Swal.fire('Error', response.data.message, 'error');
             }
-        }).fail(() => Swal.fire('Error', 'Connection failed', 'error'));
+        }).fail(() => Swal.fire('Error', 'Network error', 'error'));
     }
 
-    function sendEmail(user, selectedIndices) {
-        Swal.fire({ title: 'Sending...', didOpen: () => Swal.showLoading() });
+    function renewServices(user, renewedServices) {
+        Swal.showLoading();
+        $.post(WHMIN_Admin.ajaxurl, {
+            action: 'whmin_renew_site_services',
+            nonce: WHMIN_Admin.nonce,
+            user: user,
+            renewed_services: renewedServices
+        }).done(response => {
+            Swal.close();
+            if (response.success) {
+                Swal.fire('Success!', response.data.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                Swal.fire('Error', response.data.message, 'error');
+            }
+        }).fail(() => Swal.fire('Error', 'Network error', 'error'));
+    }
+
+    function sendServiceEmail(user, serviceIndices) {
+        Swal.showLoading();
         $.post(WHMIN_Admin.ajaxurl, {
             action: 'whmin_send_service_email',
             nonce: WHMIN_Admin.nonce,
             user: user,
-            services: selectedIndices
-        }).done((res) => {
-            res.success ? Swal.fire('Sent!', res.data.message, 'success') : Swal.fire('Error', res.data.message, 'error');
-        });
-    }
-
-    function handleMonitoringToggle() {
-        const $btn = $(this);
-        const user = $btn.data('user');
-        const newEnabled = !($btn.data('enabled') == 1);
-
-        Swal.fire({
-            title: newEnabled ? 'Enable Monitoring?' : 'Disable Monitoring?',
-            showCancelButton: true,
-            confirmButtonText: 'Yes',
-        }).then((res) => {
-            if(res.isConfirmed) {
-                $.post(WHMIN_Admin.ajaxurl, {
-                    action: 'whmin_toggle_direct_monitoring',
-                    nonce: WHMIN_Admin.nonce,
-                    user: user,
-                    enabled: newEnabled ? 1 : 0
-                }).done((r) => { if(r.success) location.reload(); });
+            services: serviceIndices
+        }).done(response => {
+            Swal.close();
+            if (response.success) {
+                Swal.fire('Sent!', response.data.message, 'success');
+            } else {
+                Swal.fire('Error', response.data.message, 'error');
             }
-        });
+        }).fail(() => Swal.fire('Error', 'Network error', 'error'));
     }
+
+    // ==========================================
+    //  TABLE MANAGEMENT
+    // ==========================================
 
     function updateTableView() {
-        const term = $('#site-search-input').val().toLowerCase();
-        const filtered = term ? allTableRows.filter(row => $(row).text().toLowerCase().includes(term)) : [...allTableRows];
+        const searchTerm = $('#site-search-input').val().toLowerCase();
+        const filteredRows = searchTerm 
+            ? allTableRows.filter(row => $(row).text().toLowerCase().includes(searchTerm))
+            : [...allTableRows];
+
+        const startIndex = 0;
+        const endIndex = currentPage * rowsPerPage;
+        const visibleRows = filteredRows.slice(startIndex, endIndex);
+
         $(allTableRows).hide();
-        $('#direct-sites-table tbody').append(filtered);
-        const end = currentPage * rowsPerPage;
-        $(filtered).slice(0, end).show();
-        $('#load-more-btn').toggle(end < filtered.length);
-        $('#no-results-message').toggle(filtered.length === 0 && term);
+        $(visibleRows).show();
+
+        $('#load-more-btn').toggle(filteredRows.length > endIndex);
+        $('#no-results-message').toggle(filteredRows.length === 0 && searchTerm.length > 0);
     }
 
-    function handleSearch() { currentPage = 1; updateTableView(); }
-    function handleSortClick() { 
+    function handleSearch() {
+        currentPage = 1;
+        updateTableView();
+    }
+
+    function handleSortClick() {
         const $header = $(this);
         const columnIndex = $header.index();
-        let direction = 'asc';
-        if ($header.hasClass('asc')) direction = 'desc';
+        const direction = $header.hasClass('asc') ? 'desc' : 'asc';
+        const type = $header.data('sort');
+
         $('.sortable-header').removeClass('asc desc');
         $header.addClass(direction);
 
-        const multiplier = (direction === 'asc') ? 1 : -1;
-        allTableRows.sort((a, b) => {
-            const valA = $(a).children('td').eq(columnIndex-1).text().trim();
-            const valB = $(b).children('td').eq(columnIndex-1).text().trim();
-            return valA.localeCompare(valB) * multiplier;
+        allTableRows.sort((rowA, rowB) => {
+            const cellA = $(rowA).find('td, th').eq(columnIndex);
+            const cellB = $(rowB).find('td, th').eq(columnIndex);
+            let valA = cellA.data('value') !== undefined ? cellA.data('value') : cellA.text().trim();
+            let valB = cellB.data('value') !== undefined ? cellB.data('value') : cellB.text().trim();
+
+            if (type === 'number') {
+                valA = parseFloat(valA) || 0;
+                valB = parseFloat(valB) || 0;
+                return direction === 'asc' ? valA - valB : valB - valA;
+            } else {
+                return direction === 'asc' 
+                    ? valA.localeCompare(valB)
+                    : valB.localeCompare(valA);
+            }
         });
+
+        currentPage = 1;
         updateTableView();
     }
-    
-    function debounce(func, delay) { let t; return function(...args) { clearTimeout(t); t = setTimeout(() => func.apply(this, args), delay); }; }
+
+    function debounce(func, delay) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
 
 })(jQuery);

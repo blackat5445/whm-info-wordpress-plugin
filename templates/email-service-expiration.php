@@ -64,10 +64,6 @@ function whmin_render_email_row($service, $is_expired_section) {
                 <!-- Body -->
                 <tr>
                     <td style="padding:24px;">
-                        <p style="margin:0 0 16px 0; font-size:14px; color:#333333;">
-                            <?php printf( esc_html__( 'Hi %s,', 'whmin' ), esc_html( $recipient_name ) ); ?>
-                        </p>
-
                         <p style="margin:0 0 16px 0; font-size:14px;">
                             <strong><?php esc_html_e('Website:', 'whmin'); ?></strong> 
                             <a href="<?php echo esc_url($site_url); ?>" target="_blank" style="color:#0a8a96; text-decoration:none;"><?php echo esc_html($site_url); ?></a>

@@ -14,7 +14,7 @@ $whm_url = get_option('whmin_whm_server_url');
             <?php _e('Direct Connected Websites', 'whmin'); ?>
         </h3>
         <p class="text-muted">
-            <?php _e('Manage websites connected directly via the WHM API. Click a column header to sort, or use the search box to filter results.', 'whmin'); ?>
+            <?php _e('Manage websites connected directly via the WHM API.', 'whmin'); ?>
         </p>
     </div>
 </div>
@@ -54,47 +54,68 @@ $whm_url = get_option('whmin_whm_server_url');
                 </div>
             </div>
 
-            <!-- Data Table Container for shadow and styling -->
+            <!-- Data Table Container -->
             <div class="whmin-data-table-container">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle whmin-data-table" id="direct-sites-table">
                         <thead>
                             <tr>
                                 <th scope="col" class="sortable-header" data-sort="number">#</th>
-                                <th scope="col" class="sortable-header" data-sort="string"><?php _e('Website Name', 'whmin'); ?></th>
-                                <th scope="col" class="sortable-header" data-sort="string"><?php _e('Website URL', 'whmin'); ?></th>
-                                <th scope="col" class="sortable-header" data-sort="date"><?php _e('Setup Date', 'whmin'); ?></th>
-                                <th scope="col" class="sortable-header" data-sort="number"><?php _e('Disk Used', 'whmin'); ?></th>
-                                <th scope="col" class="text-center sortable-header" data-sort="string"><?php _e('Connection', 'whmin'); ?></th> <!-- NEW -->
+                                <th scope="col" class="sortable-header" data-sort="string"><?php _e('Website', 'whmin'); ?></th>
+                                <th scope="col"><?php _e('Services & Expiration', 'whmin'); ?></th> <!-- NEW -->
+                                <th scope="col" class="sortable-header" data-sort="number"><?php _e('Disk', 'whmin'); ?></th>
                                 <th scope="col" class="text-center sortable-header" data-sort="string"><?php _e('Status', 'whmin'); ?></th>
                                 <th scope="col" class="text-center"><?php _e('Action', 'whmin'); ?></th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($sites_data as $site): ?>
-                            <tr id="site-<?php echo esc_attr($site['user']); ?>">
+                            <tr id="site-<?php echo esc_attr($site['user']); ?>" data-json="<?php echo esc_attr(json_encode($site['services'])); ?>">
                                 <th scope="row"><?php echo $site['id']; ?></th>
-                                <td class="site-name"><?php echo $site['name']; ?></td>
-                                <td><a href="<?php echo $site['url']; ?>" target="_blank" class="text-decoration-none"><?php echo $site['url']; ?></a></td>
-                                <td data-value="<?php echo esc_attr($site['setup_timestamp']); ?>"><?php echo $site['setup_date']; ?></td>
-                                <td data-value="<?php echo esc_attr($site['disk_used_bytes']); ?>"><?php echo $site['disk_used']; ?></td>
-
-                                <!-- NEW: Connection (agent) status -->
-                                <td class="text-center">
-                                    <?php
-                                        $conn_status = $site['connection_status'] ?? 'not_activated';
-                                        if ($conn_status === 'activated') {
-                                            $conn = ['text' => __('Activated', 'whmin'), 'class' => 'success'];
-                                        } else {
-                                            $conn = ['text' => __('Not Activated', 'whmin'), 'class' => 'secondary'];
-                                        }
-                                    ?>
-                                    <span class="badge bg-<?php echo esc_attr($conn['class']); ?>-light text-<?php echo esc_attr($conn['class']); ?> rounded-pill">
-                                        <?php echo esc_html($conn['text']); ?>
-                                    </span>
+                                
+                                <td>
+                                    <strong class="site-name"><?php echo $site['name']; ?></strong><br>
+                                    <a href="<?php echo $site['url']; ?>" target="_blank" class="small text-muted text-decoration-none"><?php echo $site['url']; ?></a>
+                                    <div class="small text-muted mt-1">
+                                        <?php printf(__('Setup: %s', 'whmin'), $site['setup_date']); ?>
+                                        <!-- Connection Status -->
+                                        <?php if($site['connection_status'] === 'activated'): ?>
+                                            <span class="badge bg-success-light text-success ms-1" style="font-size:0.65em;">Agent Active</span>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
 
-                                <!-- Existing WHM/monitoring status -->
+                                <!-- NEW: Services Column -->
+                                <td class="small">
+                                    <?php 
+                                    if (!empty($site['services']['items'])) {
+                                        $count = 0;
+                                        foreach ($site['services']['items'] as $item) {
+                                            if ($count >= 2) {
+                                                echo '<div class="text-muted"><em>+' . (count($site['services']['items']) - 2) . ' ' . __('more', 'whmin') . '...</em></div>';
+                                                break;
+                                            }
+                                            
+                                            $exp_date = $item['unlimited'] ? __('Unlimited', 'whmin') : $item['expiration_date'];
+                                            $price = $item['price'] ? $item['price'] . '€' : '-';
+                                            $is_expired = (!$item['unlimited'] && strtotime($item['expiration_date']) < time());
+                                            $style = $is_expired ? 'text-danger fw-bold' : 'text-dark';
+                                            
+                                            echo '<div class="'.$style.'">';
+                                            echo esc_html($item['name']) . ': ' . esc_html($price) . ' <span class="text-muted">(' . esc_html($exp_date) . ')</span>';
+                                            if ($is_expired) echo ' <i class="mdi mdi-alert-circle" title="Expired"></i>';
+                                            echo '</div>';
+                                            $count++;
+                                        }
+                                    } else {
+                                        echo '<span class="text-muted">-</span>';
+                                    }
+                                    ?>
+                                </td>
+
+                                <td data-value="<?php echo esc_attr($site['disk_used_bytes']); ?>"><?php echo $site['disk_used']; ?></td>
+
+                                <!-- Status -->
                                 <td class="text-center" data-value="<?php echo esc_attr($site['status']['text']); ?>">
                                     <span class="badge bg-<?php echo esc_attr($site['status']['class']); ?>-light text-<?php echo esc_attr($site['status']['class']); ?> rounded-pill">
                                         <?php echo esc_html($site['status']['text']); ?>
@@ -102,22 +123,32 @@ $whm_url = get_option('whmin_whm_server_url');
                                 </td>
 
                                 <td class="text-center">
+                                    <!-- Edit Services -->
                                     <button
-                                        class="btn btn-sm btn-outline-primary edit-site-name-btn"
+                                        class="btn btn-sm btn-outline-primary edit-site-btn"
                                         data-user="<?php echo esc_attr($site['user']); ?>"
-                                        data-current-name="<?php echo esc_attr($site['name']); ?>"
+                                        data-name="<?php echo esc_attr($site['name']); ?>"
                                         data-bs-toggle="tooltip"
-                                        title="<?php _e('Edit Friendly Name', 'whmin'); ?>">
+                                        title="<?php _e('Edit Services & Info', 'whmin'); ?>">
                                         <i class="mdi mdi-pencil"></i>
                                     </button>
+
+                                    <!-- Send Email -->
+                                    <button
+                                        class="btn btn-sm btn-outline-warning send-email-btn"
+                                        data-user="<?php echo esc_attr($site['user']); ?>"
+                                        data-bs-toggle="tooltip"
+                                        title="<?php _e('Send Expiration Email', 'whmin'); ?>">
+                                        <i class="mdi mdi-email-alert"></i>
+                                    </button>
                                     
-                                    <!-- Monitoring Toggle Button (unchanged) -->
+                                    <!-- Toggle Monitor -->
                                     <button
                                         class="btn btn-sm <?php echo $site['monitoring_enabled'] ? 'btn-success' : 'btn-outline-secondary'; ?> toggle-monitoring-btn"
                                         data-user="<?php echo esc_attr($site['user']); ?>"
                                         data-enabled="<?php echo $site['monitoring_enabled'] ? '1' : '0'; ?>"
                                         data-bs-toggle="tooltip"
-                                        title="<?php echo $site['monitoring_enabled'] ? __('Monitoring Active - Click to Disable', 'whmin') : __('Monitoring Disabled - Click to Enable', 'whmin'); ?>">
+                                        title="<?php _e('Toggle Monitoring', 'whmin'); ?>">
                                         <i class="mdi mdi-<?php echo $site['monitoring_enabled'] ? 'eye' : 'eye-off'; ?>"></i>
                                     </button>
                                 </td>
@@ -128,7 +159,6 @@ $whm_url = get_option('whmin_whm_server_url');
                 </div>
             </div>
 
-            <!-- Pagination / Load More -->
             <div id="pagination-controls" class="text-center mt-4">
                 <button id="load-more-btn" class="btn btn-primary"><?php _e('Load More', 'whmin'); ?></button>
             </div>
